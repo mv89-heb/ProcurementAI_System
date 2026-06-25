@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ProcureAI | מערכת רכש חכמה</title>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        :root {
+            --bg-body: #f1f5f9; --bg-sidebar: #0f172a; --bg-card: #ffffff;
+            --text-main: #1e293b; --text-muted: #64748b;
+            --accent-blue: #2563eb; --accent-green: #10b981; --accent-orange: #f59e0b; --accent-red: #ef4444;
+            --border: #e2e8f0; --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+            --radius: 12px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Heebo', sans-serif; }
+        body { background-color: var(--bg-body); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; }
+
+        .sidebar { width: 280px; background-color: var(--bg-sidebar); color: #e2e8f0; display: flex; flex-direction: column; z-index: 20; box-shadow: 4px 0 15px rgba(0,0,0,0.05); }
+        .sidebar-header { padding: 30px 24px; font-size: 26px; font-weight: 800; display: flex; align-items: center; gap: 15px; border-bottom: 1px solid rgba(255,255,255,0.05); }
+        .sidebar-header i { color: #3b82f6; font-size: 28px; }
+        .nav-links { list-style: none; padding: 20px 10px; flex-grow: 1; overflow-y: auto; }
+        .nav-links li { padding: 14px 20px; margin: 4px 0; border-radius: 8px; display: flex; align-items: center; gap: 16px; cursor: pointer; font-weight: 500; transition: all 0.2s ease; }
+        .nav-links li:hover, .nav-links li.active { background-color: rgba(255,255,255,0.05); color: #fff; }
+        .nav-links li.active { background-color: var(--accent-blue); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); }
+        .nav-links i { font-size: 18px; width: 22px; text-align: center; }
+
+        .main-content { flex-grow: 1; display: flex; flex-direction: column; overflow-y: auto; }
+        .topbar { background-color: var(--bg-card); padding: 16px 40px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); position: sticky; top: 0; z-index: 10; }
+        .topbar h2 { font-size: 18px; font-weight: 600; color: var(--text-muted); }
+        
+        .tab-content { display: none; padding: 40px; max-width: 1500px; margin: 0 auto; width: 100%; animation: fadeIn 0.4s ease; }
+        .tab-content.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; margin-bottom: 30px; }
+        .kpi-card { background: var(--bg-card); padding: 24px; border-radius: var(--radius); box-shadow: var(--shadow-sm); border: 1px solid var(--border); }
+        .kpi-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px;}
+        .kpi-title { font-size: 14px; color: var(--text-muted); font-weight: 600; }
+        .kpi-icon { width: 40px; height: 40px; border-radius: 10px; display: flex; align-items: center; justify-content: center; font-size: 18px; background: #eff6ff; color: #2563eb;}
+        .kpi-value { font-size: 28px; font-weight: 800; color: var(--text-main); }
+
+        .card { background: var(--bg-card); border-radius: var(--radius); box-shadow: var(--shadow-sm); border: 1px solid var(--border); overflow: hidden; margin-bottom: 20px; }
+        .card-header { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; justify-content: space-between; align-items: center; }
+        .card-title { font-size: 16px; font-weight: 700; display: flex; align-items: center; gap: 10px; }
+        .module-body { padding: 30px; }
+
+        .input-group { display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px; }
+        .input-group label { font-size: 14px; font-weight: 600; color: var(--text-main); }
+        .input-group input, .input-group select { font-size: 15px; padding: 12px; border: 1px solid var(--border); border-radius: 8px; background-color: #f8fafc; cursor: pointer; width: 100%; }
+        
+        .table-container { width: 100%; overflow-x: auto; border: 1px solid var(--border); border-radius: 8px; margin-top: 20px; display: none;}
+        table { width: 100%; border-collapse: collapse; text-align: right; font-size: 14px; }
+        th { background-color: #f8fafc; color: var(--text-muted); font-weight: 600; padding: 16px; border-bottom: 2px solid var(--border); }
+        td { padding: 14px 16px; border-bottom: 1px solid var(--border); }
+        tr:hover { background-color: #f8fafc; }
+        
+        .btn-submit { background-color: var(--text-main); color: white; border: none; padding: 14px 20px; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; width: 100%; display: flex; justify-content: center; align-items: center; gap: 10px;}
+        .text-red { color: var(--accent-red); font-weight: bold; }
+        .text-green { color: var(--accent-green); font-weight: bold; }
+        .summary-box { background: #eff6ff; padding: 20px; border-radius: 8px; border: 1px solid #bfdbfe; margin-top: 20px; font-size: 16px; display: none;}
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar">
+        <div class="sidebar-header"><i class="fa-solid fa-layer-group"></i> <span>ProcureAI</span></div>
+        <ul class="nav-links">
+            <li class="active" data-tab="dashboard-tab"><i class="fa-solid fa-chart-pie"></i> <span>לוח בקרה</span></li>
+            <li data-tab="pricelists-tab"><i class="fa-solid fa-database"></i> <span>מאגר מחירונים</span></li>
+            <li data-tab="invoice-tab"><i class="fa-solid fa-file-invoice-dollar"></i> <span>חשבונית מול מחירון</span></li>
+            <li data-tab="quotes-tab"><i class="fa-solid fa-scale-balanced"></i> <span>השוואת הצעות (Cherry Pick)</span></li>
+            <li data-tab="delivery-tab"><i class="fa-solid fa-truck-ramp-box"></i> <span>בקרת משלוחים (Delivery)</span></li>
+            <li data-tab="settings-tab"><i class="fa-solid fa-gear"></i> <span>הגדרות מערכת</span></li>
+        </ul>
+    </aside>
+
+    <main class="main-content">
+        <header class="topbar"><h2 id="page-title">לוח בקרה</h2></header>
+
+        <div id="dashboard-tab" class="tab-content active">
+            <div class="kpi-grid">
+                <div class="kpi-card">
+                    <div class="kpi-header"><span class="kpi-title">מחירוני ספקים פעילים</span><div class="kpi-icon"><i class="fa-solid fa-book-open"></i></div></div>
+                    <div class="kpi-value" id="kpi-suppliers">טוען...</div>
+                </div>
+                <div class="kpi-card">
+                    <div class="kpi-header"><span class="kpi-title">סה"כ מק"טים במאגר</span><div class="kpi-icon" style="background:#ecfdf5; color:#10b981;"><i class="fa-solid fa-cubes"></i></div></div>
+                    <div class="kpi-value" id="kpi-items">טוען...</div>
+                </div>
+            </div>
+        </div>
+
+        <div id="pricelists-tab" class="tab-content">
+            <div class="card">
+                <div class="card-header"><div class="card-title"><i class="fa-solid fa-folder-open" style="color: var(--accent-blue);"></i> צפייה במחירונים</div></div>
+                <div class="module-body">
+                    <div class="input-group">
+                        <select id="view-supplier-select"><option value="">-- טוען נתונים... --</option></select>
+                    </div>
+                    <div class="table-container" id="pricelist-table-wrapper" style="display: block;">
+                        <table>
+                            <thead><tr><th>מק"ט</th><th style="width: 40%;">תיאור</th><th>מחיר</th><th>יח' מידה</th></tr></thead>
+                            <tbody id="pricelist-table-body"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="invoice-tab" class="tab-content">
+            <div class="card" style="max-width: 800px; margin: 0 auto;">
+                <div class="card-header"><div class="card-title"><i class="fa-solid fa-file-invoice-dollar" style="color: var(--accent-blue);"></i> בדיקת חשבונית מול מחירון</div></div>
+                <div class="module-body">
+                    <form id="form-invoice" onsubmit="event.preventDefault(); submitForm('form-invoice', '/api/analyze-prices', 'invoice-results');">
+                        <div class="input-group">
+                            <label>בחר ספק לאימות:</label>
+                            <select name="supplier_name" id="invoice-supplier-select" required></select>
+                        </div>
+                        <div class="input-group">
+                            <label>העלה חשבונית:</label>
+                            <input type="file" name="invoice" required>
+                        </div>
+                        <button type="submit" class="btn-submit"><i class="fa-solid fa-magnifying-glass"></i> בדוק חיובי יתר</button>
+                    </form>
+                    
+                    <div class="table-container" id="invoice-results">
+                        <table>
+                            <thead><tr><th>מק"ט</th><th>תיאור</th><th>מחירון אושר</th><th>חויב בפועל</th><th>סטטוס</th></tr></thead>
+                            <tbody id="invoice-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="quotes-tab" class="tab-content">
+            <div class="card" style="max-width: 800px; margin: 0 auto;">
+                <div class="card-header"><div class="card-title"><i class="fa-solid fa-scale-balanced" style="color: var(--accent-orange);"></i> השוואת הצעות מחיר (Cherry Pick)</div></div>
+                <div class="module-body">
+                    <form id="form-quotes" onsubmit="event.preventDefault(); submitForm('form-quotes', '/api/compare-quotes', 'quotes-results');">
+                        <div class="input-group">
+                            <label>הצעת מחיר א':</label>
+                            <input type="file" name="quote_a" required>
+                        </div>
+                        <div class="input-group">
+                            <label>הצעת מחיר ב':</label>
+                            <input type="file" name="quote_b" required>
+                        </div>
+                        <div class="input-group">
+                            <label>רף התראה לפיצול (אחוזים %):</label>
+                            <input type="number" name="threshold" value="5.0" step="0.1">
+                        </div>
+                        <button type="submit" class="btn-submit" style="background: var(--accent-orange);"><i class="fa-solid fa-code-compare"></i> השווה הצעות עכשיו</button>
+                    </form>
+                    
+                    <div id="quote-summary" class="summary-box"></div>
+
+                    <div class="table-container" id="quotes-results">
+                        <table>
+                            <thead><tr><th>מק"ט</th><th>תיאור</th><th>מחיר א'</th><th>מחיר ב'</th><th>פער %</th><th>המלצה</th></tr></thead>
+                            <tbody id="quotes-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="delivery-tab" class="tab-content">
+            <div class="card" style="max-width: 800px; margin: 0 auto;">
+                <div class="card-header"><div class="card-title"><i class="fa-solid fa-truck-ramp-box" style="color: var(--accent-green);"></i> בקרת משלוח מול חשבונית</div></div>
+                <div class="module-body">
+                    <form id="form-delivery" onsubmit="event.preventDefault(); submitForm('form-delivery', '/api/analyze', 'delivery-results');">
+                        <div class="input-group">
+                            <label>תעודת משלוח (כמות שסופקה בפועל):</label>
+                            <input type="file" name="delivery" required>
+                        </div>
+                        <div class="input-group">
+                            <label>חשבונית מס (כמות שחויבה):</label>
+                            <input type="file" name="invoice" required>
+                        </div>
+                        <button type="submit" class="btn-submit" style="background: var(--accent-green);"><i class="fa-solid fa-boxes-packing"></i> בדוק חוסרים</button>
+                    </form>
+                    
+                    <div class="table-container" id="delivery-results">
+                        <table>
+                            <thead><tr><th>מק"ט</th><th>תיאור</th><th>כמות סופקה</th><th>כמות חויבה</th><th>סטטוס</th></tr></thead>
+                            <tbody id="delivery-tbody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <div id="settings-tab" class="tab-content">
+            <div class="card" style="max-width: 600px; margin: 0 auto;"><div class="card-header"><div class="card-title">הגדרות</div></div><div class="module-body">מערכת מוכנה.</div></div>
+        </div>
+    </main>
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function() {
+            // Tabs logic
+            const navItems = document.querySelectorAll('.nav-links li');
+            const tabContents = document.querySelectorAll('.tab-content');
+            const pageTitle = document.getElementById('page-title');
+
+            navItems.forEach(item => {
+                item.addEventListener('click', () => {
+                    navItems.forEach(i => i.classList.remove('active'));
+                    tabContents.forEach(tc => tc.classList.remove('active'));
+                    item.classList.add('active');
+                    document.getElementById(item.getAttribute('data-tab')).classList.add('active');
+                    pageTitle.innerText = item.querySelector('span').innerText;
+                });
+            });
+
+            // Fetch Dashboard & Suppliers
+            fetch('/api/dashboard-stats').then(r => r.json()).then(data => {
+                document.getElementById('kpi-suppliers').innerText = data.total_suppliers;
+                document.getElementById('kpi-items').innerText = data.total_items.toLocaleString();
+            });
+
+            fetch('/api/suppliers').then(r => r.json()).then(data => {
+                const viewSelect = document.getElementById('view-supplier-select');
+                const invSelect = document.getElementById('invoice-supplier-select');
+                const optHtml = `<option value="">-- בחר ספק (${data.count}) --</option>` + data.suppliers.map(s => `<option value="${s}">${s}</option>`).join('');
+                viewSelect.innerHTML = optHtml;
+                invSelect.innerHTML = optHtml;
+            });
+
+            // Load Pricelist Table
+            document.getElementById('view-supplier-select').addEventListener('change', function() {
+                if(!this.value) return;
+                fetch(`/api/pricelist/${this.value}`).then(r => r.json()).then(data => {
+                    let items = data.items || Object.keys(data).filter(k=>k!=='supplier_name').map(k=>({sku: k, ...data[k]}));
+                    document.getElementById('pricelist-table-body').innerHTML = items.map(i => `<tr><td><b>${i.sku}</b></td><td>${i.description||'-'}</td><td>${i.price} ₪</td><td>${i.uom||"יח'"}</td></tr>`).join('');
+                    document.getElementById('pricelist-table-wrapper').style.display = 'block';
+                });
+            });
+        });
+
+        // Universal Form Submitter
+        function submitForm(formId, endpoint, resultContainerId) {
+            const form = document.getElementById(formId);
+            const btn = form.querySelector('button');
+            const originalText = btn.innerHTML;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> מעבד נתונים ב-AI...';
+            btn.disabled = true;
+
+            fetch(endpoint, { method: 'POST', body: new FormData(form) })
+            .then(r => r.json())
+            .then(data => {
+                btn.innerHTML = originalText; btn.disabled = false;
+                document.getElementById(resultContainerId).style.display = 'block';
+                
+                if(endpoint === '/api/analyze-prices') {
+                    document.getElementById('invoice-tbody').innerHTML = data.results.map(r => `<tr><td>${r.sku}</td><td>${r.description}</td><td>${r.approved_price} ₪</td><td>${r.invoice_price} ₪</td><td class="${r.is_match?'text-green':'text-red'}">${r.status}</td></tr>`).join('');
+                } 
+                else if (endpoint === '/api/analyze') {
+                    document.getElementById('delivery-tbody').innerHTML = data.results.map(r => `<tr><td>${r.sku}</td><td>${r.description}</td><td>${r.delivery_qty}</td><td>${r.invoice_qty}</td><td class="${r.is_match?'text-green':'text-red'}">${r.status}</td></tr>`).join('');
+                }
+                else if (endpoint === '/api/compare-quotes') {
+                    const sumBox = document.getElementById('quote-summary');
+                    sumBox.style.display = 'block';
+                    sumBox.innerHTML = `סה"כ א': <b>${data.summary.total_a} ₪</b> | סה"כ ב': <b>${data.summary.total_b} ₪</b><br>מחיר משולב אידיאלי: <b>${data.summary.total_split} ₪</b><br><br><b>${data.summary.recommendation}</b>`;
+                    document.getElementById('quotes-tbody').innerHTML = data.results.map(r => `<tr><td>${r.sku}</td><td>${r.description}</td><td>${r.price_a} ₪</td><td>${r.price_b} ₪</td><td>${r.diff_pct.toFixed(1)}%</td><td>${r.winner === 'A' ? "א' זול יותר" : (r.winner === 'B' ? "ב' זול יותר" : "זהה")}</td></tr>`).join('');
+                }
+            })
+            .catch(err => { alert("שגיאה בעת העיבוד: " + err); btn.innerHTML = originalText; btn.disabled = false; });
+        }
+    </script>
+</body>
+</html>
