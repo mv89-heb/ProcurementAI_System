@@ -5,12 +5,12 @@
 <title>מערכת בקרה חכמה</title>
 
 <style>
-body { font-family: Arial; background:#f4f4f4; }
-.container { max-width:1000px; margin:auto; background:white; padding:20px; border-radius:10px; }
-button { padding:10px; background:blue; color:white; border:none; cursor:pointer; margin-top:10px; }
+body {font-family:Arial;background:#f4f4f4;}
+.container{max-width:1000px;margin:auto;background:white;padding:20px;border-radius:10px;}
 
-.ok { background:#dcfce7; }
-.bad { background:#fee2e2; }
+button{padding:10px;background:blue;color:white;border:none;margin-top:5px;}
+.ok{background:#dcfce7;}
+.bad{background:#fee2e2;}
 </style>
 </head>
 
@@ -20,22 +20,42 @@ button { padding:10px; background:blue; color:white; border:none; cursor:pointer
 
 <h2>🤖 מערכת בקרה חכמה</h2>
 
+<!-- ספק -->
 <select id="supplier"></select>
-<input type="file" id="file">
-<button onclick="analyze()">בדוק חשבונית</button>
 
-<div id="insights"></div>
+<!-- העלאת מחירון -->
+<h3>📥 העלאת מחירון</h3>
+<input type="file" id="pl">
+<button onclick="upload()">העלה</button>
+
+<!-- חשבונית -->
+<h3>📄 בדיקת חשבונית</h3>
+<input type="file" id="file">
+<button onclick="analyze()">בדוק</button>
+
+<!-- השוואה -->
+<h3>⚖️ השוואת ספקים</h3>
+<button onclick="compare()">בדוק מוצר</button>
+
+<!-- דשבורד -->
+<h3>📊 דשבורד</h3>
+<button onclick="dashboard()">הצג</button>
+<div id="dash"></div>
+
+<!-- תובנות -->
+<div id="alerts"></div>
 
 <table>
 <thead>
 <tr>
-<th>SKU</th>
+<th>תיאור</th>
 <th>מחיר חשבונית</th>
 <th>מחיר מאושר</th>
 <th>פער</th>
 <th>סטטוס</th>
 </tr>
 </thead>
+
 <tbody id="body"></tbody>
 </table>
 
@@ -44,57 +64,71 @@ button { padding:10px; background:blue; color:white; border:none; cursor:pointer
 <script>
 
 async function loadSuppliers(){
-    const res = await fetch('/api/get-suppliers');
-    const data = await res.json();
+    let res = await fetch('/api/get-suppliers')
+    let data = await res.json()
 
-    const sel = document.getElementById("supplier");
-    sel.innerHTML = "";
+    let sel = document.getElementById("supplier")
+    data.suppliers.forEach(s=> sel.innerHTML += `<option>${s}</option>`)
+}
 
-    data.suppliers.forEach(s=>{
-        sel.innerHTML += `<option>${s}</option>`;
-    });
+async function upload(){
+    let f = document.getElementById("pl").files[0]
+    let fd = new FormData()
+    fd.append("file",f)
+    let res = await fetch('/api/upload-pricelist',{method:"POST",body:fd})
+    let d = await res.json()
+    alert("נשמר: "+d.supplier)
 }
 
 async function analyze(){
 
-    const sup = document.getElementById("supplier").value;
-    const file = document.getElementById("file").files[0];
+    let sup = document.getElementById("supplier").value
+    let f = document.getElementById("file").files[0]
 
-    const fd = new FormData();
-    fd.append("supplier", sup);
-    fd.append("file", file);
+    let fd = new FormData()
+    fd.append("supplier", sup)
+    fd.append("file", f)
 
-    const res = await fetch('/api/analyze-invoice', {
-        method:'POST',
-        body:fd
-    });
+    let res = await fetch('/api/analyze-invoice',{method:'POST',body:fd})
+    let data = await res.json()
 
-    const data = await res.json();
-
-    const body = document.getElementById("body");
-    body.innerHTML = "";
+    let body = document.getElementById("body")
+    body.innerHTML = ""
 
     data.results.forEach(r=>{
         body.innerHTML += `
-        <tr class="${r.status === 'תקין' ? 'ok':'bad'}">
-        <td>${r.sku}</td>
+        <tr class="${r.status=='תקין'?'ok':'bad'}">
+        <td>${r.description}</td>
         <td>${r.invoice_price}</td>
-        <td>${r.approved_price ?? '-'}</td>
-        <td>${r.difference ?? '-'}</td>
+        <td>${r.approved_price||'-'}</td>
+        <td>${r.difference||'-'}</td>
         <td>${r.status}</td>
-        </tr>`;
-    });
+        </tr>`
+    })
 
-    document.getElementById("insights").innerHTML = `
-        <h3>📊 תובנות</h3>
-        סה"כ שורות: ${data.insights.total}<br>
-        חריגות: ${data.insights.issues}<br>
-        התראות:<br>
-        ${data.insights.alerts.join("<br>")}
-    `;
+    document.getElementById("alerts").innerHTML =
+        "התראות:<br>"+data.alerts.join("<br>")
 }
 
-loadSuppliers();
+async function compare(){
+    let name = prompt("שם מוצר")
+    let res = await fetch(`/api/compare-product?name=${name}`)
+    let data = await res.json()
+    alert(JSON.stringify(data,null,2))
+}
+
+async function dashboard(){
+    let res = await fetch('/api/dashboard')
+    let d = await res.json()
+    document.getElementById("dash").innerHTML = `
+        סה"כ: ${d.total}<br>
+        ממוצע: ${d.avg}<br>
+        יקרים:<br>
+        ${d.top.map(i=>i.description+"-"+i.max_price).join("<br>")}
+    `
+}
+
+loadSuppliers()
 
 </script>
 
