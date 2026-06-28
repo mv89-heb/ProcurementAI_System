@@ -120,10 +120,14 @@ def get_suppliers():
         conn = get_db_connection()
         cursor = conn.cursor()
         cursor.execute("SELECT DISTINCT supplier_name FROM pricelist_items ORDER BY supplier_name")
-        suppliers = [row['supplier_name'] for row in cursor.fetchall()]
+        rows = cursor.fetchall()
+        # שינוי קטן: הדפסת הנתונים כדי לראות מה באמת חוזר
+        print(f"--- נתונים שחזרו מה-DB: {rows} ---")
+        suppliers = [row['supplier_name'] for row in rows]
         cursor.close(); conn.close()
         return jsonify({"suppliers": suppliers})
     except Exception as e:
+        print(f"--- שגיאה קריטית ב-get_suppliers: {e} ---") # זה מה שאנחנו צריכים לראות
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/analyze', methods=['POST'])
