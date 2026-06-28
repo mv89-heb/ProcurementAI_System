@@ -18,9 +18,9 @@ def home():
     return render_template("index.html")
 
 
-# ✅ ספקים מה־DB
+# ✅ הבאת ספקים
 @app.route('/api/get-suppliers')
-def suppliers():
+def get_suppliers():
     try:
         with get_db() as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
@@ -39,11 +39,11 @@ def suppliers():
         return jsonify({"error": str(e)}), 500
 
 
-# ✅ בדיקת חשבונית מול DB
-@app.route('/api/analyze-prices', methods=['POST'])
-def analyze():
+# ✅ הבאת מחירון של ספק
+@app.route('/api/get-pricelist')
+def get_pricelist():
 
-    supplier = request.form.get("supplier_name")
+    supplier = request.args.get("supplier")
 
     if not supplier:
         return jsonify({"error": "missing supplier"}), 400
@@ -51,27 +51,28 @@ def analyze():
     try:
         with get_db() as conn:
             with conn.cursor(cursor_factory=RealDictCursor) as cur:
+
                 cur.execute("""
                     SELECT sku, description, price
                     FROM pricelist_items
                     WHERE supplier_name = %s
+                    ORDER BY sku
                 """, (supplier,))
+
                 rows = cur.fetchall()
 
-        # ✅ אם אין נתונים
-        if not rows:
-            return jsonify({
-                "error": "אין נתונים לספק הזה",
-                "results": []
-            })
-
-        return jsonify({
-            "results": rows
-        })
+        return jsonify({"items": rows})
 
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
 
+# ✅ בדיקה בסיסית
+@app.route('/test')
+def test():
+    return "Server is working ✅"
+
+
 if __name__ == "__main__":
     app.run(debug=True)
+``
