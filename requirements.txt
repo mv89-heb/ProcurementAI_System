@@ -1,6 +1,6 @@
-Flask==3.0.0
-google-genai
-Pillow
-PyMuPDF
+flask
 gunicorn
 psycopg2-binary
+pymupdf
+pillow
+google-genai
