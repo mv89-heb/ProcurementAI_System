@@ -1,146 +1,67 @@
+from flask import Flask, request, jsonify, render_template
 import os
-import io
-import json
-import psycopg2
-from psycopg2.extras import RealDictCursor
-from flask import Flask, request, jsonify
-from PIL import Image
-import fitz
-from google import genai
-from google.genai import types
+
+from database import get_all_suppliers, get_supplier_pricelist, save_pricelist
+from ai_engine import AIEngine
 
 app = Flask(__name__)
-app.config['MAX_CONTENT_LENGTH'] = 10 * 1024 * 1024
 
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
-DATABASE_URL = os.environ.get("DATABASE_URL", "")
-
-client = genai.Client(api_key=GEMINI_API_KEY)
-
-def get_db_connection():
-    return psycopg2.connect(DATABASE_URL)
+ai = AIEngine(os.environ.get("GEMINI_API_KEY"))
 
 
-def normalize_sku(sku):
-    if not sku:
-        return ""
-    return sku.strip().replace("-", "").replace(" ", "").lower()
+@app.route('/')
+def home():
+    return render_template("index.html")
 
 
-def convert_to_optimized_image_part(file_storage):
-    file_bytes = file_storage.read()
-    filename = file_storage.filename.lower()
-
-    if filename.endswith('.pdf'):
-        doc = fitz.open(stream=file_bytes, filetype="pdf")
-        page = doc.load_page(0)
-        pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
-        return types.Part.from_bytes(data=pix.tobytes("jpeg"), mime_type='image/jpeg')
-
-    img = Image.open(io.BytesIO(file_bytes)).convert("RGB")
-    buf = io.BytesIO()
-    img.save(buf, format='JPEG')
-    return types.Part.from_bytes(data=buf.getvalue(), mime_type='image/jpeg')
+# ✅ ספקים מהקבצים
+@app.route('/api/get-suppliers')
+def suppliers():
+    return jsonify({"suppliers": get_all_suppliers()})
 
 
-def extract_data_with_gemini(part):
-    prompt = """
-    חלץ טבלת מוצרים מהחשבונית.
-    
-    החזר JSON בלבד:
-    {
-      "items": [
-        {
-          "sku": "string",
-          "description": "string",
-          "value": number
-        }
-      ]
-    }
-    
-    אם אין מק\"ט ברור - נחש.
-    """
+# ✅ העלאת מחירון
+@app.route('/api/upload-pricelist', methods=['POST'])
+def upload_pricelist():
+    file = request.files.get("file")
 
-    try:
-        response = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=[part, prompt],
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                temperature=0
-            )
-        )
+    data = ai.extract_pricelist(file)
 
-        data = json.loads(response.text)
-        return data.get("items", [])
+    supplier = data.get("supplier_name", "Unknown")
+    save_pricelist(supplier, data)
 
-    except Exception as e:
-        print("❌ Gemini error:", e)
-        return []
+    return jsonify({"status": "ok", "supplier": supplier})
 
 
+# ✅ ניתוח חשבונית
 @app.route('/api/analyze-prices', methods=['POST'])
-def analyze_prices():
+def analyze():
 
-    supplier_name = request.form.get('supplier_name', '')
-    file = request.files.get('invoice')
+    supplier = request.form.get("supplier_name")
+    file = request.files.get("invoice")
 
-    if not supplier_name or not file:
-        return jsonify({"error": "חסר ספק או קובץ"}), 400
+    pricelist = get_supplier_pricelist(supplier)
 
-    debug_info = {}
+    db = {i["sku"]: i["price"] for i in pricelist.get("items", [])}
 
-    try:
-        # --- DB ---
-        with get_db_connection() as conn:
-            with conn.cursor(cursor_factory=RealDictCursor) as cursor:
-                cursor.execute("""
-                    SELECT sku, description, price
-                    FROM pricelist_items
-                    WHERE supplier_name = %s
-                """, (supplier_name,))
-                rows = cursor.fetchall()
+    items = ai.extract_invoice(file)
 
-        debug_info["db_count"] = len(rows)
+    results = []
 
-        pricelist = {
-            normalize_sku(r['sku']): {
-                "price": float(r['price'])
-            } for r in rows
-        }
+    for i in items:
+        sku = i.get("sku")
+        price = i.get("price", 0)
 
-        # --- AI ---
-        part = convert_to_optimized_image_part(file)
-        invoice_items = extract_data_with_gemini(part)
+        ref = db.get(sku)
 
-        debug_info["ai_items"] = invoice_items[:5]
-
-        results = []
-
-        for item in invoice_items:
-            raw_sku = item.get("sku", "")
-            sku = normalize_sku(raw_sku)
-
-            price = float(item.get("value", 0))
-            base = pricelist.get(sku)
-
-            results.append({
-                "sku": raw_sku,
-                "invoice_price": price,
-                "approved_price": base["price"] if base else None,
-                "found_in_db": base is not None
-            })
-
-        return jsonify({
-            "results": results,
-            "debug": debug_info
+        results.append({
+            "sku": sku,
+            "invoice_price": price,
+            "approved_price": ref,
+            "found": ref is not None
         })
 
-    except Exception as e:
-        return jsonify({
-            "error": str(e),
-            "debug": debug_info
-        }), 500
+    return jsonify({"results": results})
 
 
 if __name__ == "__main__":
