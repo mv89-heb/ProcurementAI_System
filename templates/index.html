@@ -3,351 +3,302 @@
 <head>
 <meta charset="UTF-8">
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-
 <style>
 
-/* BASE */
 body {
     margin:0;
-    font-family: Inter, Arial;
+    font-family:"Inter", Arial;
     background:#0b1220;
-    color:white;
+    color:#e2e8f0;
 }
 
-/* LAYOUT */
-.app {
-    display:flex;
-    height:100vh;
+/* --- LAYOUT --- */
+.container {
+    max-width:1200px;
+    margin:auto;
+    padding:30px;
 }
 
-/* SIDEBAR */
-.sidebar {
-    width:240px;
-    background:#020617;
-    padding:20px;
-}
-
-.logo {
-    font-size:20px;
+/* --- HEADER --- */
+.header {
+    font-size:24px;
     font-weight:bold;
     margin-bottom:20px;
 }
 
-.nav button {
+/* --- SELECT --- */
+select {
     width:100%;
-    background:#1e293b;
+    padding:10px;
+    border-radius:8px;
     border:none;
+    background:#020617;
     color:white;
-    padding:12px;
+}
+
+/* --- BUTTON --- */
+button {
     margin-top:10px;
+    background:linear-gradient(135deg,#6366f1,#4f46e5);
+    border:none;
+    padding:10px;
+    width:100%;
+    color:white;
     border-radius:8px;
     cursor:pointer;
 }
 
-.nav button:hover {
-    background:#334155;
+button:hover {
+    opacity:0.9;
 }
 
-/* MAIN */
-.main {
-    flex:1;
-    display:flex;
-    flex-direction:column;
-}
-
-/* TOPBAR */
-.topbar {
+/* --- CARDS --- */
+.card {
+    background:#111827;
+    border-radius:12px;
     padding:15px;
-    background:#020617;
-    display:flex;
-    gap:10px;
+    margin-top:15px;
 }
 
-select,input {
-    padding:10px;
-    border-radius:8px;
-}
-
-/* CONTENT */
-.content {
-    padding:20px;
-    overflow:auto;
-}
-
-/* KPI */
-.kpis {
+/* --- GRID --- */
+.grid {
     display:grid;
-    grid-template-columns:repeat(4,1fr);
-    gap:15px;
+    grid-template-columns:1fr 1fr;
+    gap:20px;
 }
 
+/* --- KPI --- */
 .kpi {
-    background:#1e293b;
+    background:#1f2937;
     padding:15px;
     border-radius:10px;
     text-align:center;
 }
 
-/* GRID */
-.grid {
+/* --- TOTAL GRID --- */
+.kpis {
     display:grid;
-    grid-template-columns:2fr 1fr;
-    gap:20px;
+    grid-template-columns:repeat(3,1fr);
+    gap:10px;
     margin-top:20px;
 }
 
-/* CARD */
-.card {
-    background:#1e293b;
+/* --- PRODUCT CARD --- */
+.product {
+    background:#111827;
     padding:15px;
-    border-radius:10px;
+    border-radius:12px;
+    margin-top:15px;
 }
 
-/* TABLE */
-table {
-    width:100%;
-    border-collapse:collapse;
+/* --- PRICE --- */
+.best {
+    color:#22c55e;
+    font-weight:bold;
 }
 
-th {
-    padding:10px;
-    background:#334155;
+.bad {
+    color:#ef4444;
 }
 
-td {
-    padding:10px;
-    border-bottom:1px solid #475569;
-}
-
-tr:hover { background:#334155; }
-
-/* STATUS */
-.ok { color:#22c55e }
-.warn { color:#facc15 }
-.bad { color:#ef4444 }
-
-/* SEARCH */
-.search {
+/* --- TITLE --- */
+.title {
+    font-size:18px;
     margin-bottom:10px;
-    padding:10px;
+    color:#cbd5f5;
 }
 
-/* LOADING */
-.loading {
-    color:#aaa;
+.subtitle {
+    font-size:13px;
+    color:#94a3b8;
 }
 
 </style>
-
 </head>
 
 <body>
 
-<div class="app">
+<div class="container">
 
-<!-- SIDEBAR -->
-<div class="sidebar">
-    <div class="logo">🚀 Procurement AI</div>
-
-    <div class="nav">
-        <button onclick="setView('dashboard')">📊 Dashboard</button>
-        <button onclick="setView('table')">📋 Table</button>
-    </div>
+<div class="header">
+🚀 מערכת השוואת ספקים מבוססת AI
 </div>
 
-<!-- MAIN -->
-<div class="main">
+<!-- SELECT -->
+<div class="card">
+<div class="title">בחר ספקים להשוואה</div>
 
-<div class="topbar">
-    <select id="supplier"></select>
-    <button onclick="loadData()">טען</button>
+<select id="suppliers" multiple size="5"></select>
+
+<button onclick="compare()">⚖️ בצע השוואה</button>
 </div>
 
-<div class="content" id="content"></div>
 
-</div>
+<!-- KPI -->
+<div id="kpis"></div>
+
+<!-- INSIGHTS -->
+<div id="insights"></div>
+
+<!-- RANKING -->
+<div id="ranking"></div>
+
+<!-- RESULTS -->
+<div id="results"></div>
 
 </div>
 
 <script>
 
-let state = {
-    view: "dashboard",
-    supplier: null,
-    items: []
-};
 
-let chart;
+// ✅ טעינת ספקים
+async function loadSuppliers(){
 
+    let res = await fetch('/api/get-suppliers')
+    let data = await res.json()
 
-// ✅ change view
-function setView(view){
-    state.view = view;
-    render();
-}
-
-
-// ✅ load suppliers
-async function init(){
-
-    let res = await fetch('/api/get-suppliers');
-    let data = await res.json();
-
-    let sel = document.getElementById("supplier");
-
-    sel.innerHTML = "<option value=''>בחר ספק</option>";
+    let sel = document.getElementById("suppliers")
 
     data.suppliers.forEach(s=>{
-        sel.innerHTML += `<option value="${s}">${s}</option>`;
-    });
+        sel.innerHTML += `<option value="${s}">${s}</option>`
+    })
 }
 
 
-// ✅ load data
-async function loadData(){
+// ✅ השוואה
+async function compare(){
 
-    let supplier = document.getElementById("supplier").value;
+    let sel = document.getElementById("suppliers")
 
-    if(!supplier) return;
+    let selected = Array.from(sel.selectedOptions)
+        .map(o=>o.value)
 
-    state.supplier = supplier;
-
-    document.getElementById("content").innerHTML =
-        "<div class='loading'>טוען נתונים...</div>";
-
-    let res = await fetch(`/api/get-pricelist?supplier=${encodeURIComponent(supplier)}`);
-    let data = await res.json();
-
-    state.items = data.items || [];
-
-    render();
-}
-
-
-// ✅ render main
-function render(){
-
-    if(state.view === "dashboard"){
-        renderDashboard();
-    } else {
-        renderTableView();
-    }
-}
-
-
-// ✅ dashboard view
-function renderDashboard(){
-
-    let items = state.items;
-
-    if(items.length === 0){
-        document.getElementById("content").innerHTML =
-            "<div>⚠️ אין נתונים</div>";
+    if(selected.length < 2){
+        alert("בחר לפחות 2 ספקים");
         return;
     }
 
-    let total = items.length;
-    let avg = items.reduce((s,i)=>s+Number(i.price),0)/total;
-    let max = Math.max(...items.map(i=>i.price));
+    let res = await fetch('/api/compare-suppliers',{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({suppliers:selected})
+    })
 
-    document.getElementById("content").innerHTML = `
+    let data = await res.json()
 
-    <div class="kpis">
-        <div class="kpi">סה"כ<br>${total}</div>
-        <div class="kpi">ממוצע<br>${avg.toFixed(2)}</div>
-        <div class="kpi">יקר ביותר<br>${max}</div>
-        <div class="kpi">ספק<br>${state.supplier}</div>
-    </div>
+    renderAll(data)
+}
 
-    <div class="grid">
-        <div class="card">
-            <canvas id="chart"></canvas>
+
+// ✅ רינדור הכל
+function renderAll(data){
+
+    renderKPI(data)
+    renderInsights(data)
+    renderRanking(data)
+    renderResults(data)
+}
+
+
+// ✅ KPI
+function renderKPI(data){
+
+    let totalProducts = data.results.length
+
+    let bestCount = 0
+
+    data.results.forEach(r => {
+        bestCount += r.offers.length
+    })
+
+    document.getElementById("kpis").innerHTML = `
+        <div class="kpis">
+
+            <div class="kpi">
+                📦 מוצרים מושווים<br>
+                <b>${totalProducts}</b>
+            </div>
+
+            <div class="kpi">
+                🛒 ספקים<br>
+                <b>${data.ranking.length}</b>
+            </div>
+
+            <div class="kpi">
+                ⚡ תובנות<br>
+                <b>${data.insights.length}</b>
+            </div>
+
         </div>
-    </div>
-
-    `;
-
-    renderChart(items);
+    `
 }
 
 
-// ✅ table view
-function renderTableView(){
+// ✅ INSIGHTS
+function renderInsights(data){
 
-    let items = state.items;
-
-    let html = `
-    <input class="search" placeholder="חיפוש..." onkeyup="search(this.value)">
-    <table>
-    <thead>
-    <tr>
-    <th>SKU</th>
-    <th>תיאור</th>
-    <th>מחיר</th>
-    </tr>
-    </thead>
-    <tbody id="tbody">
-    </tbody>
-    </table>
-    `;
-
-    document.getElementById("content").innerHTML = html;
-
-    renderTable(items);
+    document.getElementById("insights").innerHTML = `
+        <div class="card">
+            <div class="title">📊 תובנות חכמות</div>
+            ${data.insights.map(i => `<div>${i}</div>`).join("")}
+        </div>
+    `
 }
 
 
-// ✅ render table
-function renderTable(items){
+// ✅ RANKING
+function renderRanking(data){
 
-    let body = document.getElementById("tbody");
-    body.innerHTML = "";
+    document.getElementById("ranking").innerHTML = `
+        <div class="card">
+            <div class="title">🏆 דירוג ספקים</div>
 
-    items.forEach(i=>{
-        body.innerHTML += `
-        <tr>
-        <td>${i.sku}</td>
-        <td>${i.description}</td>
-        <td>${i.price}</td>
-        </tr>`;
-    });
+            ${data.ranking.map(r => `
+                <div>
+                    ${r[0]} ➜ 
+                    <span class="${r[1] === 0 ? 'best':'bad'}">
+                        ${r[1].toFixed(2)}
+                    </span>
+                </div>
+            `).join("")}
+
+        </div>
+    `
 }
 
 
-// ✅ search
-function search(text){
+// ✅ RESULTS
+function renderResults(data){
 
-    let filtered = state.items.filter(i =>
-        i.description.toLowerCase().includes(text.toLowerCase())
-    );
+    document.getElementById("results").innerHTML =
+        data.results.map(r => {
 
-    renderTable(filtered);
+            return `
+            <div class="product">
+
+                <div class="title">📦 ${r.product}</div>
+
+                <div class="subtitle">
+                ⭐ המלצה: ${r.best_supplier} (${r.best_price})
+                </div>
+
+                <br>
+
+                ${r.offers.map(o => `
+                    <div class="${o.difference === 0 ? 'best' : 'bad'}">
+                        🛒 ${o.supplier} ➜ ${o.price} (${o.difference})
+                    </div>
+                `).join("")}
+
+            </div>
+            `
+        }).join("")
 }
 
 
-// ✅ chart
-function renderChart(items){
+// INIT
+loadSuppliers()
 
-    let labels = items.slice(0,10).map(i=>i.description);
-    let values = items.slice(0,10).map(i=>i.price);
-
-    if(chart) chart.destroy();
-
-    chart = new Chart(document.getElementById("chart"), {
-        type:"bar",
-        data:{
-            labels,
-            datasets:[{
-                label:"מחירים",
-                data:values
-            }]
-        }
-    });
-}
-
-
-init();
 
 </script>
 
