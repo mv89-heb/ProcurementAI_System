@@ -1,8 +1,7 @@
 flask
 gunicorn
 psycopg2-binary
+pgvector
 pillow
 pymupdf
 google-genai
-numpy>=1.26.0
-
