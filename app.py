@@ -21,32 +21,23 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://USER:PASSWORD@ep-xxx.neon.tech/neondb?sslmode=require")
 
 def get_db_connection():
+    # נוסיף את cursor_factory במפורש כאן
+    conn = psycopg2.connect(DATABASE_URL)
+    return conn # נחזיר את החיבור כפי שהוא
+
+# ובתוך הפונקציות עצמן, נפתח את ה-Cursor בצורה מפורשת:
+def get_suppliers():
     try:
-        conn = psycopg2.connect(DATABASE_URL)
-        print("--- חיבור ל-DB הצליח! ---")
-        return conn
+        conn = get_db_connection()
+        # פתיחה מפורשת כ-RealDictCursor
+        cursor = conn.cursor(cursor_factory=RealDictCursor) 
+        cursor.execute("SELECT DISTINCT supplier_name FROM pricelist_items ORDER BY supplier_name")
+        rows = cursor.fetchall()
+        suppliers = [row['supplier_name'] for row in rows]
+        cursor.close(); conn.close()
+        return jsonify({"suppliers": suppliers})
     except Exception as e:
-        print(f"--- שגיאה בחיבור ל-DB: {e} ---")
-        raise e
-
-item_schema = types.Schema(
-    type=types.Type.OBJECT,
-    properties={
-        "items": types.Schema(
-            type=types.Type.ARRAY,
-            items=types.Schema(
-                type=types.Type.OBJECT,
-                properties={
-                    "sku": types.Schema(type=types.Type.STRING),
-                    "description": types.Schema(type=types.Type.STRING),
-                    "value": types.Schema(type=types.Type.NUMBER)
-                },
-                required=["sku", "value"]
-            )
-        )
-    }
-)
-
+        return jsonify({"error": str(e)}), 500
 def extract_data_with_gemini(document_part, doc_type="price"):
     prompt = "חלץ מהמסמך את כל הפריטים. החזר מק''ט (sku), תיאור (description) ומחיר ליחידה (value)."
     if doc_type == "qty":
