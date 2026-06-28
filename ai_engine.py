@@ -42,8 +42,9 @@ class AIEngine:
     def get_embedding(self, text):
         try:
             res = self.client.models.embed_content(
-                model="text-embedding-004",
-                contents=text
+            model="text-embedding-005", # <--- שנה את המספר מ-004 ל-005
+            contents=text
+        )
             )
             # ג'מיני מחזיר רשימה של אובייקטים, ניקח את הראשון
             return res.embeddings[0].values
