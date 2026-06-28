@@ -7,7 +7,7 @@
 <style>
 body {
     font-family: Arial;
-    background: #f4f4f4;
+    background: #f3f4f6;
 }
 
 .container {
@@ -18,32 +18,63 @@ body {
     border-radius: 10px;
 }
 
+h2 {
+    text-align: center;
+}
+
+select, input {
+    width: 100%;
+    padding: 8px;
+    margin-top: 10px;
+}
+
 button {
+    width: 100%;
     padding: 10px;
-    background: blue;
+    background: #2563eb;
     color: white;
     border: none;
-    cursor: pointer;
     margin-top: 10px;
+    cursor: pointer;
+}
+
+button:hover {
+    background: #1d4ed8;
 }
 
 table {
     width: 100%;
-    margin-top: 15px;
+    margin-top: 20px;
     border-collapse: collapse;
 }
 
-td, th {
+th {
+    background: #2563eb;
+    color: white;
+    padding: 10px;
+}
+
+td {
     border: 1px solid #ddd;
     padding: 8px;
 }
 
-#debug-box {
-    background: black;
-    color: #00ff00;
+.ok {
+    background: #dcfce7;
+    color: green;
+}
+
+.bad {
+    background: #fee2e2;
+    color: red;
+}
+
+.card {
     padding: 10px;
-    margin-top: 20px;
-    font-size: 12px;
+    margin-top: 10px;
+    border-radius: 8px;
+    background: #e0e7ff;
+    text-align: center;
 }
 </style>
 </head>
@@ -52,95 +83,145 @@ td, th {
 
 <div class="container">
 
-<h2>בדיקת חשבוניות</h2>
+<h2>📊 מערכת בקרה חכמה</h2>
 
-<label>בחר ספק:</label>
-<select id="supplier"></select>
+<!-- --- העלאת מחירון --- -->
+<div class="card">
+<h3>📥 העלאת מחירון</h3>
 
-<br><br>
+<input type="file" id="pricelistFile">
+<button onclick="uploadPricelist()">שמור מחירון</button>
 
-<input type="file" id="file">
+</div>
 
-<br>
+<!-- --- בדיקת חשבונית --- -->
+<div class="card">
+<h3>🔍 בדיקת חשבונית</h3>
 
-<button onclick="analyze()">בדיקה</button>
+<select id="supplier">
+    <option value="">בחר ספק</option>
+</select>
 
+<input type="file" id="invoice">
+
+<button onclick="analyze()">בדוק חשבונית</button>
+
+</div>
+
+<!-- --- סיכום --- -->
+<div id="summary"></div>
+
+<!-- --- טבלה --- -->
 <table>
 <thead>
 <tr>
-<th>SKU</th>
+<th>מק\"ט</th>
 <th>מחיר בפועל</th>
 <th>מחיר מאושר</th>
-<th>נמצא ב-DB</th>
+<th>סטטוס</th>
 </tr>
 </thead>
-
 <tbody id="body"></tbody>
 </table>
-
-<div id="debug-box"></div>
 
 </div>
 
 <script>
 
+// ✅ טען ספקים
 async function loadSuppliers(){
     const res = await fetch('/api/get-suppliers');
     const data = await res.json();
 
-    const sel = document.getElementById('supplier');
-    sel.innerHTML = '<option value="">בחר ספק</option>';
+    const sel = document.getElementById("supplier");
+    sel.innerHTML = "<option value=''>בחר ספק</option>";
 
     data.suppliers.forEach(s => {
         sel.innerHTML += `<option value="${s}">${s}</option>`;
     });
 }
 
-async function analyze(){
 
-    const sup = document.getElementById('supplier').value;
-    const file = document.getElementById('file').files[0];
+// ✅ העלאת מחירון
+async function uploadPricelist(){
+    const file = document.getElementById("pricelistFile").files[0];
 
-    if(!sup || !file){
-        alert("בחר ספק וקובץ");
+    if(!file){
+        alert("בחר קובץ מחירון");
         return;
     }
 
     const fd = new FormData();
-    fd.append("supplier_name", sup);
-    fd.append("invoice", file);
+    fd.append("file", file);
 
-    const res = await fetch('/api/analyze-prices', {
-        method: 'POST',
+    const res = await fetch('/api/upload-pricelist', {
+        method: "POST",
         body: fd
     });
 
     const data = await res.json();
 
-    console.log("FULL RESPONSE:", data);
+    alert("מחירון נשמר עבור: " + data.supplier);
 
-    // ✅ DEBUG על המסך
-    document.getElementById("debug-box").innerHTML = `
-        <h3>DEBUG</h3>
-        <p>כמות רשומות DB: ${data.debug?.db_count}</p>
-        <p>AI זיהה פריטים:</p>
-        <pre>${JSON.stringify(data.debug?.ai_items, null, 2)}</pre>
-    `;
-
-    const body = document.getElementById("body");
-    body.innerHTML = "";
-
-    data.results.forEach(r=>{
-        body.innerHTML += `
-        <tr>
-            <td>${r.sku}</td>
-            <td>${r.invoice_price}</td>
-            <td>${r.approved_price ?? 'לא נמצא'}</td>
-            <td>${r.found_in_db ? '✅' : '❌'}</td>
-        </tr>`;
-    });
+    loadSuppliers();
 }
 
+
+// ✅ בדיקת חשבונית
+async function analyze(){
+
+    const supplier = document.getElementById("supplier").value;
+    const file = document.getElementById("invoice").files[0];
+
+    if(!supplier || !file){
+        alert("בחר ספק וקובץ");
+        return;
+    }
+
+    const fd = new FormData();
+    fd.append("supplier_name", supplier);
+    fd.append("invoice", file);
+
+    const res = await fetch('/api/analyze-prices', {
+        method: "POST",
+        body: fd
+    });
+
+    const data = await res.json();
+
+    const body = document.getElementById("body");
+    const summary = document.getElementById("summary");
+
+    body.innerHTML = "";
+
+    let ok = 0;
+    let bad = 0;
+
+    data.results.forEach(r => {
+
+        let match = r.found;
+        if(match) ok++; else bad++;
+
+        body.innerHTML += `
+        <tr class="${match ? 'ok':'bad'}">
+            <td>${r.sku}</td>
+            <td>${r.invoice_price}</td>
+            <td>${r.approved_price ?? '---'}</td>
+            <td>${match ? '✅ תקין':'❌ חריגה'}</td>
+        </tr>
+        `;
+    });
+
+    summary.innerHTML = `
+        <div class="card">
+            ✅ תקינים: ${ok} |
+            ❌ חריגים: ${bad}
+        </div>
+    `;
+}
+
+
+// הפעלה ראשונית
 loadSuppliers();
 
 </script>
