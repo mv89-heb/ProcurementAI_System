@@ -1,40 +1,29 @@
 import os
 import io
-import json
 import time
 from flask import Flask, render_template, request, jsonify
 from PIL import Image
 import fitz  # PyMuPDF
+import psycopg2
+from psycopg2.extras import RealDictCursor
 
 from google import genai
 from google.genai import types
 
 app = Flask(__name__)
 
-# --- חובה: מפתח ה-API שלך ---
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "AQ.Ab8RN6L-8tRXy__KdraSbkW3Ndga4O02i_Lm8cEgw6R4nfjHtQ")
+# ================= התקנות והגדרות סביבה =================
+# חובה להכניס את מפתח ה-Gemini שלך
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY")
 client = genai.Client(api_key=GEMINI_API_KEY)
 
-# ניהול מסד נתונים
-DB_DIR = os.path.join(os.path.dirname(__file__), 'database')
-if not os.path.exists(DB_DIR):
-    os.makedirs(DB_DIR)
+# חובה להכניס את חיבור ה-Neon שלך
+DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://USER:PASSWORD@ep-xxx.neon.tech/neondb?sslmode=require")
 
-def load_pricelists():
-    db = {}
-    for filename in os.listdir(DB_DIR):
-        if filename.endswith('.json'):
-            sup_name = os.path.splitext(filename)[0]
-            try:
-                with open(os.path.join(DB_DIR, filename), 'r', encoding='utf-8') as f:
-                    db[sup_name] = json.load(f)
-            except:
-                pass
-    return db
+def get_db_connection():
+    return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
 
-PRICELISTS_DB = load_pricelists()
-
-# --- מנוע תמונה והכנה ל-AI ---
+# ================= מנוע AI ותמונות =================
 def convert_to_optimized_image_part(file_storage):
     file_bytes = file_storage.read()
     filename = file_storage.filename.lower()
@@ -81,6 +70,7 @@ def extract_data_with_gemini(document_part, doc_type="price"):
     if doc_type == "qty":
         prompt = "חלץ מהמסמך את כל הפריטים. החזר מק''ט (sku), תיאור (description) וכמות פריטים (value)."
 
+    import json
     response = client.models.generate_content(
         model='gemini-2.5-flash',
         contents=[document_part, prompt],
@@ -93,47 +83,66 @@ def extract_data_with_gemini(document_part, doc_type="price"):
     return json.loads(response.text).get("items", [])
 
 
-# --- הראוטרים ---
+# ================= ראוטרים (API Routes) =================
 @app.route('/')
 def home():
     return render_template('index.html')
 
 @app.route('/api/upload-multiple-pricelists', methods=['POST'])
 def upload_multiple_pricelists():
-    global PRICELISTS_DB
     if 'pricelists' not in request.files: return jsonify({"error": "לא נבחרו קבצים"}), 400
-    
     file = request.files['pricelists']
     if not file or not file.filename.endswith('.pdf'): return jsonify({"error": "קובץ לא תקין"}), 400
 
     clean_filename = file.filename.replace('\\', '/').split('/')[-1]
     supplier_name = os.path.splitext(clean_filename)[0]
     
-    if supplier_name in PRICELISTS_DB: return jsonify({"message": f"המחירון {supplier_name} כבר קיים."})
-
     try:
+        # בדיקה מהירה מול ה-DB האם הספק כבר קיים (מונע שליחה מיותרת לגוגל)
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT 1 FROM pricelist_items WHERE supplier_name = %s LIMIT 1", (supplier_name,))
+        if cursor.fetchone():
+            cursor.close(); conn.close()
+            return jsonify({"message": f"המחירון {supplier_name} כבר קיים במערכת."})
+
         doc_part = convert_to_optimized_image_part(file)
         raw_items = extract_data_with_gemini(doc_part, doc_type="price")
-        parsed_dict = {item["sku"]: {"description": item.get("description", ""), "price": float(item["value"])} for item in raw_items if item.get("sku")}
         
-        if parsed_dict:
-            PRICELISTS_DB[supplier_name] = parsed_dict
-            with open(os.path.join(DB_DIR, f"{supplier_name}.json"), 'w', encoding='utf-8') as f:
-                json.dump(parsed_dict, f, ensure_ascii=False, indent=4)
-            return jsonify({"message": f"נשמר בהצלחה: {supplier_name}"})
-        else:
+        valid_items = [item for item in raw_items if item.get("sku")]
+        if not valid_items:
+            cursor.close(); conn.close()
             return jsonify({"error": "לא נמצאו נתונים"}), 400
+
+        # הכנסה למאגר SQL
+        for item in valid_items:
+            cursor.execute("""
+                INSERT INTO pricelist_items (supplier_name, sku, description, price)
+                VALUES (%s, %s, %s, %s)
+                ON CONFLICT (supplier_name, sku) DO UPDATE 
+                SET price = EXCLUDED.price, description = EXCLUDED.description;
+            """, (supplier_name, item["sku"], item.get("description", ""), float(item["value"])))
+            
+        conn.commit()
+        cursor.close()
+        conn.close()
+        return jsonify({"message": f"נשמר בהצלחה: {supplier_name}"})
+        
     except Exception as e:
+        print(f"שגיאה בהעלאה: {e}")
         return jsonify({"error": str(e)}), 500
 
 @app.route('/api/get-suppliers', methods=['GET'])
-def get_suppliers(): return jsonify({"suppliers": list(PRICELISTS_DB.keys())})
-
-@app.route('/api/get-pricelist', methods=['POST'])
-def get_pricelist():
-    supplier_name = request.json.get('supplier_name', '')
-    pricelist = PRICELISTS_DB.get(supplier_name, {})
-    return jsonify({"pricelist": [{"sku": k, "description": v['description'], "price": v['price']} for k, v in pricelist.items()]})
+def get_suppliers():
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT DISTINCT supplier_name FROM pricelist_items ORDER BY supplier_name")
+        suppliers = [row['supplier_name'] for row in cursor.fetchall()]
+        cursor.close(); conn.close()
+        return jsonify({"suppliers": suppliers})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 @app.route('/api/analyze', methods=['POST'])
 def analyze_documents():
@@ -161,10 +170,19 @@ def analyze_documents():
 @app.route('/api/analyze-prices', methods=['POST'])
 def analyze_prices():
     supplier_name = request.form.get('supplier_name', '')
-    pricelist = PRICELISTS_DB.get(supplier_name)
-    if not pricelist: return jsonify({"error": "המחירון לא קיים."}), 404
-
+    
     try:
+        # טעינת המחירון הספציפי מה-SQL
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute("SELECT sku, description, price FROM pricelist_items WHERE supplier_name = %s", (supplier_name,))
+        rows = cursor.fetchall()
+        cursor.close(); conn.close()
+        
+        if not rows: return jsonify({"error": "המחירון לא קיים או ריק."}), 404
+        
+        pricelist = {row['sku']: {'description': row['description'], 'price': float(row['price'])} for row in rows}
+
         inv_part = convert_to_optimized_image_part(request.files['invoice'])
         
         check = client.models.generate_content(model='gemini-2.5-flash', contents=[inv_part, "מה שם הספק המנפיק בחשבונית? רק שם."])
@@ -200,36 +218,20 @@ def compare_quotes():
     try:
         threshold = float(request.form.get('threshold', 5.0))
         
-        print("\n--- מתחיל תהליך השוואת הצעות ---")
-        
-        print("1. ממיר את הצעה א' לתמונה...")
         part_a = convert_to_optimized_image_part(request.files['quote_a'])
-        
-        print("2. שולח את הצעה א' לשרתים של גוגל...")
         items_a = extract_data_with_gemini(part_a, "price")
-        
-        print("3. ממתין 2 שניות למניעת חסימה...")
         time.sleep(2) 
-        
-        print("4. ממיר את הצעה ב' לתמונה...")
         part_b = convert_to_optimized_image_part(request.files['quote_b'])
-        
-        print("5. שולח את הצעה ב' לשרתים של גוגל...")
         items_b = extract_data_with_gemini(part_b, "price")
 
-        print("6. מתחיל חישוב והשוואה בפייתון...")
         dict_a = {item['sku']: item for item in items_a if item.get('sku')}
         dict_b = {item['sku']: item for item in items_b if item.get('sku')}
 
         results = []
-        total_a = 0.0
-        total_b = 0.0
-        total_split = 0.0
+        total_a = total_b = total_split = 0.0
 
         common_skus = set(dict_a.keys()).intersection(set(dict_b.keys()))
-        
-        if not common_skus:
-            return jsonify({"error": "לא נמצאו מק\"טים חופפים בין שתי ההצעות."}), 400
+        if not common_skus: return jsonify({"error": "לא נמצאו מק\"טים חופפים."}), 400
 
         for sku in common_skus:
             price_a = float(dict_a[sku].get('value', 0))
@@ -240,78 +242,65 @@ def compare_quotes():
             min_price = min(price_a, price_b)
             diff_pct = (diff_abs / min_price * 100) if min_price > 0 else 0
 
-            if price_a < price_b:
-                winner = "A"
-            elif price_b < price_a:
-                winner = "B"
-            else:
-                winner = "Tie"
-
+            winner = "A" if price_a < price_b else ("B" if price_b < price_a else "Tie")
             gap_type = "זניח" if diff_pct <= threshold else "משמעותי"
 
             total_a += price_a
             total_b += price_b
             total_split += min_price
 
-            results.append({
-                "sku": sku, "description": desc, "price_a": price_a, "price_b": price_b,
-                "winner": winner, "diff_pct": diff_pct, "gap_type": gap_type
-            })
+            results.append({"sku": sku, "description": desc, "price_a": price_a, "price_b": price_b, "winner": winner, "diff_pct": diff_pct, "gap_type": gap_type})
 
         best_single_total = min(total_a, total_b)
         best_single_name = "הצעה א'" if total_a < total_b else "הצעה ב'"
-        
         savings_value = best_single_total - total_split
         savings_percent = (savings_value / best_single_total * 100) if best_single_total > 0 else 0
 
         if savings_percent > threshold:
-            recommendation = f"💡 המלצה: לפצל את ההזמנה! הפיצול חוסך {savings_value:.2f} ₪ ({savings_percent:.1f}%) לעומת הזמנה מ{best_single_name}."
+            recommendation = f"💡 המלצה: לפצל את ההזמנה! הפיצול חוסך {savings_value:.2f} ₪ ({savings_percent:.1f}%)."
             action_class = "split-alert"
         else:
             recommendation = f"📦 המלצה: להזמין הכל מ{best_single_name}. פיצול יחסוך רק {savings_value:.2f} ₪ ({savings_percent:.1f}%), שזה זניח."
             action_class = "consolidate-alert"
 
-        summary = {
-            "total_a": round(total_a, 2), "total_b": round(total_b, 2), "total_split": round(total_split, 2),
-            "savings_value": round(savings_value, 2), "savings_percent": round(savings_percent, 1),
-            "recommendation": recommendation, "action_class": action_class
-        }
+        summary = {"total_a": round(total_a, 2), "total_b": round(total_b, 2), "total_split": round(total_split, 2), "savings_value": round(savings_value, 2), "savings_percent": round(savings_percent, 1), "recommendation": recommendation, "action_class": action_class}
 
         return jsonify({"results": results, "summary": summary})
 
     except Exception as e:
-        print(f"שגיאה קריטית בהשוואת הצעות: {e}")
         return jsonify({"error": "אירעה שגיאה בעיבוד ההצעות."}), 500
 
-
-# =====================================================================
-# הלוגיקה החדשה: דשבורד השוואת מחירוני ספקים (BI)
-# =====================================================================
 @app.route('/api/compare-pricelists', methods=['POST'])
 def compare_pricelists():
     try:
         data = request.get_json()
         selected_suppliers = data.get('suppliers', [])
         
-        if len(selected_suppliers) < 2:
-            return jsonify({"error": "יש לבחור לפחות 2 ספקים להשוואה."}), 400
+        if len(selected_suppliers) < 2: return jsonify({"error": "יש לבחור לפחות 2 ספקים."}), 400
+
+        # שליפת הנתונים מה-SQL
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        
+        # שימוש ב-IN clause כדי לשלוף רק את הספקים שנבחרו
+        format_strings = ','.join(['%s'] * len(selected_suppliers))
+        cursor.execute(f"SELECT supplier_name, sku, description, price FROM pricelist_items WHERE supplier_name IN ({format_strings})", tuple(selected_suppliers))
+        rows = cursor.fetchall()
+        cursor.close(); conn.close()
 
         all_skus = {} 
-        
-        for sup in selected_suppliers:
-            pricelist = PRICELISTS_DB.get(sup, {})
-            for sku, details in pricelist.items():
-                if sku not in all_skus:
-                    all_skus[sku] = {"description": details['description'], "prices": {}}
-                all_skus[sku]["prices"][sup] = details['price']
+        for row in rows:
+            sku = row['sku']
+            sup = row['supplier_name']
+            if sku not in all_skus:
+                all_skus[sku] = {"description": row['description'], "prices": {}}
+            all_skus[sku]["prices"][sup] = float(row['price'])
 
         winners_board = {sup: [] for sup in selected_suppliers}
         
         for sku, data in all_skus.items():
             prices = data["prices"]
-            
-            if len(prices) < 2:
-                continue
+            if len(prices) < 2: continue
                 
             best_price = min(prices.values())
             best_sups = [s for s, p in prices.items() if p == best_price]
@@ -330,7 +319,6 @@ def compare_pricelists():
         return jsonify({"winners_board": winners_board})
 
     except Exception as e:
-        print(f"שגיאה ביצירת דשבורד השוואה: {e}")
         return jsonify({"error": "אירעה שגיאה בעיבוד הנתונים."}), 500
 
 if __name__ == '__main__':
