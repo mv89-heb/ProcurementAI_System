@@ -1,14 +1,37 @@
 import os
+import json
 import psycopg2
+import numpy as np
 from psycopg2.extras import RealDictCursor
 from flask import Flask, request, jsonify, render_template
+from google import genai
 
 app = Flask(__name__)
 
 DATABASE_URL = os.environ.get("DATABASE_URL")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+
+client = genai.Client(api_key=GEMINI_API_KEY)
+
 
 def get_db():
     return psycopg2.connect(DATABASE_URL)
+
+
+# ✅ embedding
+def get_embedding(text):
+    res = client.models.embed_content(
+        model="text-embedding-004",
+        content=text
+    )
+    return res.embeddings[0].values
+
+
+# ✅ cosine
+def cosine(a, b):
+    a = np.array(a)
+    b = np.array(b)
+    return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
 
 
 @app.route('/')
@@ -16,50 +39,102 @@ def home():
     return render_template("index.html")
 
 
+# ✅ ספקים
 @app.route('/api/get-suppliers')
-def get_suppliers():
+def suppliers():
     with get_db() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute("""
-                SELECT DISTINCT TRIM(supplier_name) as supplier_name
-                FROM pricelist_items
-                ORDER BY supplier_name
-            """)
+            cur.execute("SELECT DISTINCT supplier_name FROM pricelist_items")
             rows = cur.fetchall()
 
-    return jsonify({"suppliers": [r["supplier_name"] for r in rows]})
+    return jsonify({"suppliers":[r["supplier_name"] for r in rows]})
 
 
-@app.route('/api/get-pricelist')
-def get_pricelist():
+# ✅ השוואת ספקים + תובנות + המלצות
+@app.route('/api/compare-suppliers', methods=['POST'])
+def compare():
 
-    supplier = request.args.get("supplier")
+    suppliers = request.json.get("suppliers")
+
+    if not suppliers or len(suppliers) < 2:
+        return jsonify({"error":"בחר לפחות 2 ספקים"}), 400
 
     with get_db() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
 
             cur.execute("""
-                SELECT sku, description, price
+                SELECT supplier_name, description, price, embedding
                 FROM pricelist_items
-                WHERE LOWER(TRIM(supplier_name)) = LOWER(TRIM(%s))
-                ORDER BY description
-            """, (supplier,))
+                WHERE supplier_name = ANY(%s)
+                AND embedding IS NOT NULL
+            """, (suppliers,))
 
             rows = cur.fetchall()
 
-    return jsonify({"items": rows})
+    # ✅ grouping לפי embedding
+    groups = []
 
+    for item in rows:
 
-@app.route('/api/dashboard')
-def dashboard():
+        matched = False
 
-    with get_db() as conn:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+        for g in groups:
+            score = cosine(item["embedding"], g[0]["embedding"])
 
-            cur.execute("SELECT COUNT(*) FROM pricelist_items")
-            total = cur.fetchone()["count"]
+            if score > 0.85:
+                g.append(item)
+                matched = True
+                break
 
-            cur.execute("SELECT AVG(price) FROM pricelist_items")
-            avg = cur.fetchone()["avg"]
+        if not matched:
+            groups.append([item])
 
-    return jsonify({"total": total, "avg": avg})
+    results = []
+    supplier_scores = {}
+
+    for g in groups:
+
+        best = min(g, key=lambda x: x["price"])
+
+        row = {
+            "product": best["description"],
+            "offers": [],
+            "best_supplier": best["supplier_name"],
+            "best_price": best["price"]
+        }
+
+        for i in g:
+
+            diff = i["price"] - best["price"]
+
+            # ✅ score supplier
+            supplier = i["supplier_name"]
+            supplier_scores[supplier] = supplier_scores.get(supplier, 0) + diff
+
+            row["offers"].append({
+                "supplier": supplier,
+                "price": i["price"],
+                "difference": round(diff,2)
+            })
+
+        row["offers"].sort(key=lambda x: x["price"])
+        results.append(row)
+
+    # ✅ ranking
+    ranking = sorted(supplier_scores.items(), key=lambda x: x[1])
+
+    insights = []
+
+    if ranking:
+        insights.append(f"🏆 הספק הזול ביותר: {ranking[0][0]}")
+
+        if len(ranking) > 1:
+            insights.append(
+                f"📉 פער בין זול ליקר: {round(ranking[-1][1] - ranking[0][1],2)}"
+            )
+
+    return jsonify({
+        "results": results,
+        "ranking": ranking,
+        "insights": insights
+    })
