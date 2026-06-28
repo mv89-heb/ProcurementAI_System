@@ -3,13 +3,12 @@
 <head>
 <meta charset="UTF-8">
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+https://cdn.jsdelivr.net/npm/chart.js
 
 <style>
-body { background:#0f172a; color:white; font-family:Arial }
+body { background:#0f172a;color:white;font-family:Arial }
 .container{max-width:1100px;margin:auto;padding:20px}
-.card{background:#1e293b;padding:15px;border-radius:10px;margin:10px}
-button{background:#6366f1;color:white;padding:10px;border:none;cursor:pointer}
+button{padding:10px;background:#6366f1;color:white;border:none;cursor:pointer}
 .ok{color:#22c55e}
 .bad{color:#ef4444}
 .warn{color:orange}
@@ -20,17 +19,26 @@ button{background:#6366f1;color:white;padding:10px;border:none;cursor:pointer}
 
 <div class="container">
 
-<h2>🤖 Smart Procurement System</h2>
+<h2>🤖 Smart Procurement</h2>
 
-<select id="supplier"></select>
+<select id="supplier" onchange="loadPricelist()"></select>
 
+<h3>📦 מחירון</h3>
+<table>
+<thead>
+<tr>
+<th>תיאור</th>
+<th>מחיר</th>
+</tr>
+</thead>
+<tbody id="price-body"></tbody>
+</table>
+
+<h3>📄 בדיקת חשבונית</h3>
 <input type="file" id="file">
 <button onclick="analyze()">בדוק</button>
 
-<div id="kpi"></div>
-
-<canvas id="chart"></canvas>
-
+<h3>📊 תוצאות</h3>
 <table>
 <thead>
 <tr>
@@ -50,7 +58,6 @@ button{background:#6366f1;color:white;padding:10px;border:none;cursor:pointer}
 
 <script>
 
-let chart;
 let cache = {};
 
 // ✅ ספקים
@@ -59,11 +66,55 @@ async function loadSuppliers(){
     let data = await res.json()
 
     let sel = document.getElementById("supplier")
-    data.suppliers.forEach(s=> sel.innerHTML += `<option>${s}</option>`)
+    sel.innerHTML = "<option value=''>בחר ספק</option>"
+
+    data.suppliers.forEach(s=>{
+        sel.innerHTML += `<option value="${s}">${s}</option>`
+    })
 }
 
 
-// ✅ analyze עם UX משופר
+// ✅ טעינת מחירון (עם cache)
+async function loadPricelist(){
+
+    let supplier = document.getElementById("supplier").value
+    if(!supplier) return
+
+    if(cache[supplier]){
+        renderPricelist(cache[supplier])
+        return
+    }
+
+    let res = await fetch(`/api/get-pricelist?supplier=${supplier}`)
+    let data = await res.json()
+
+    cache[supplier] = data.items
+    renderPricelist(data.items)
+}
+
+
+// ✅ ציור מחירון
+function renderPricelist(items){
+
+    let body = document.getElementById("price-body")
+    body.innerHTML = ""
+
+    if(items.length === 0){
+        body.innerHTML = "<tr><td colspan='2'>⚠️ אין נתונים</td></tr>"
+        return
+    }
+
+    items.forEach(i=>{
+        body.innerHTML += `
+        <tr>
+        <td>${i.description}</td>
+        <td>${i.price}</td>
+        </tr>`
+    })
+}
+
+
+// ✅ בדיקת חשבונית
 async function analyze(){
 
     const btn = document.querySelector("button")
@@ -79,29 +130,20 @@ async function analyze(){
     let res = await fetch('/api/analyze-invoice',{method:'POST',body:fd})
     let data = await res.json()
 
-    localStorage.setItem("last_analysis", JSON.stringify(data))
-
     render(data)
 
     btn.disabled = false
 }
 
 
-// ✅ render הכל
+// ✅ ציור תוצאות
 function render(data){
-    renderTable(data.results)
-    renderKPI(data.results)
-    renderChart(data.results)
-    renderAlerts(data.alerts)
-}
 
-
-// ✅ טבלה
-function renderTable(rows){
     let body = document.getElementById("body")
-    body.innerHTML=""
+    body.innerHTML = ""
 
-    rows.forEach(r=>{
+    data.results.forEach(r=>{
+
         let cls = r.difference > 10 ? 'bad' : r.difference > 0 ? 'warn':'ok'
 
         body.innerHTML += `
@@ -113,45 +155,13 @@ function renderTable(rows){
         <td class="${cls}">${r.status}</td>
         </tr>`
     })
-}
 
-
-// ✅ KPI
-function renderKPI(rows){
-    let total = rows.length
-    let issues = rows.filter(r=>r.status !== 'תקין').length
-    let savings = rows.reduce((s,r)=> s + Math.max(-(r.difference||0),0),0)
-
-    document.getElementById("kpi").innerHTML = `
-        <div class="card">סה"כ: ${total}</div>
-        <div class="card">חריגות: ${issues}</div>
-        <div class="card">חיסכון: ${savings}</div>
-    `
-}
-
-
-// ✅ גרף
-function renderChart(rows){
-    let labels = rows.map(r=>r.description)
-    let data = rows.map(r=>r.difference || 0)
-
-    if(chart) chart.destroy()
-
-    chart = new Chart(document.getElementById("chart"), {
-        type:'bar',
-        data:{ labels, datasets:[{label:"פערים",data}] }
-    })
-}
-
-
-// ✅ alerts
-function renderAlerts(alerts){
     document.getElementById("alerts").innerHTML =
-        alerts.map(a=>`<div>🔴 ${a}</div>`).join("")
+        data.alerts.map(a=>`🔴 ${a}`).join("<br>")
 }
 
 
-loadSuppliers()
+loadSuppliers();
 
 </script>
 </body>
