@@ -21,31 +21,13 @@ client = genai.Client(api_key=GEMINI_API_KEY)
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://USER:PASSWORD@ep-xxx.neon.tech/neondb?sslmode=require")
 
 def get_db_connection():
-    return psycopg2.connect(DATABASE_URL, cursor_factory=RealDictCursor)
-
-# ================= מנוע AI ותמונות =================
-def convert_to_optimized_image_part(file_storage):
-    file_bytes = file_storage.read()
-    filename = file_storage.filename.lower()
-    
     try:
-        if filename.endswith('.pdf'):
-            doc = fitz.open(stream=file_bytes, filetype="pdf")
-            page = doc.load_page(0)
-            pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
-            img_data = pix.tobytes("jpeg")
-            return types.Part.from_bytes(data=img_data, mime_type='image/jpeg')
-        else:
-            img = Image.open(io.BytesIO(file_bytes))
-            img.thumbnail((1200, 1200))
-            img_byte_arr = io.BytesIO()
-            img.save(img_byte_arr, format='JPEG', quality=80)
-            return types.Part.from_bytes(data=img_byte_arr.getvalue(), mime_type='image/jpeg')
+        conn = psycopg2.connect(DATABASE_URL)
+        print("--- חיבור ל-DB הצליח! ---")
+        return conn
     except Exception as e:
-        print(f"שגיאה בהמרה: {e}")
-        file_storage.seek(0)
-        mime = 'application/pdf' if filename.endswith('.pdf') else 'image/jpeg'
-        return types.Part.from_bytes(data=file_storage.read(), mime_type=mime)
+        print(f"--- שגיאה בחיבור ל-DB: {e} ---")
+        raise e
 
 item_schema = types.Schema(
     type=types.Type.OBJECT,
