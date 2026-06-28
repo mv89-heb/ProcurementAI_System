@@ -4,252 +4,141 @@
 <meta charset="UTF-8">
 <title>מערכת בקרה חכמה</title>
 
-https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600&display=swap
-
 <style>
 body {
-    font-family: 'Heebo', sans-serif;
-    background: linear-gradient(135deg,#eef2ff,#f8fafc);
-    margin: 0;
+    font-family: Arial;
+    background: #f4f4f4;
 }
 
 .container {
-    max-width: 1100px;
-    margin: 40px auto;
+    max-width: 900px;
+    margin: auto;
     background: white;
-    padding: 25px;
-    border-radius: 16px;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.1);
-}
-
-h2 {
-    text-align: center;
-    margin-bottom: 20px;
-}
-
-.tabs {
-    display: flex;
-    gap: 10px;
-    margin-bottom: 20px;
-}
-
-.tab-btn {
-    flex: 1;
-    padding: 12px;
-    border: none;
-    background: #e2e8f0;
+    padding: 20px;
     border-radius: 10px;
-    cursor: pointer;
-    transition: 0.3s;
 }
 
-.tab-btn.active {
-    background: #4f46e5;
-    color: white;
-    font-weight: bold;
-}
-
-.panel {
-    background: #f9fafb;
-    padding: 15px;
-    border-radius: 12px;
-    margin-bottom: 15px;
-}
-
-input, select {
+button {
     padding: 10px;
-    border-radius: 8px;
-    border: 1px solid #ddd;
-    width: 100%;
-    margin-top: 5px;
-}
-
-button.action {
-    margin-top: 10px;
-    background: #4f46e5;
+    background: blue;
     color: white;
     border: none;
-    padding: 12px;
-    border-radius: 10px;
-    width: 100%;
     cursor: pointer;
-    transition: 0.3s;
-}
-
-button.action:hover {
-    background: #4338ca;
+    margin-top: 10px;
 }
 
 table {
     width: 100%;
+    margin-top: 15px;
     border-collapse: collapse;
-    margin-top: 15px;
-    border-radius: 12px;
-    overflow: hidden;
 }
 
-th {
-    background: #4f46e5;
-    color: white;
-    padding: 12px;
+td, th {
+    border: 1px solid #ddd;
+    padding: 8px;
 }
 
-td {
+#debug-box {
+    background: black;
+    color: #00ff00;
     padding: 10px;
-    border-bottom: 1px solid #eee;
+    margin-top: 20px;
+    font-size: 12px;
 }
-
-tr:hover {
-    background: #f1f5f9;
-}
-
-.bad {
-    background: #fee2e2 !important;
-    color: #b91c1c;
-    font-weight: bold;
-}
-
-.ok {
-    background: #dcfce7 !important;
-    color: #166534;
-    font-weight: bold;
-}
-
-.loading {
-    text-align: center;
-    font-size: 18px;
-    color: #555;
-    margin-top: 10px;
-}
-
-.summary {
-    display: flex;
-    gap: 10px;
-    margin-top: 15px;
-}
-
-.card {
-    flex: 1;
-    padding: 15px;
-    border-radius: 12px;
-    text-align: center;
-    font-weight: bold;
-}
-
-.card.ok { background: #dcfce7; }
-.card.bad { background: #fee2e2; }
-.card.total { background: #e0e7ff; }
-
 </style>
 </head>
 
 <body>
 
 <div class="container">
-    <h2>📊 מערכת בקרה חכמה</h2>
 
-    <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab(event,'prices')">בקרת מחירים</button>
-        <button class="tab-btn" onclick="switchTab(event,'dashboard')">דשבורד</button>
-    </div>
+<h2>בדיקת חשבוניות</h2>
 
-    <div id="prices" class="tab-content">
-        <div class="panel">
-            <label>בחר ספק</label>
-            <select id="supplier"></select>
+<label>בחר ספק:</label>
+<select id="supplier"></select>
 
-            <label>בחר חשבונית</label>
-            <input type="file" id="file" accept=".pdf,image/*">
+<br><br>
 
-            <button class="action" onclick="analyze()">🔍 נתח חשבונית</button>
-        </div>
+<input type="file" id="file">
 
-        <div class="loading" id="loading"></div>
+<br>
 
-        <div class="summary" id="summary"></div>
+<button onclick="analyze()">בדיקה</button>
 
-        <table>
-            <thead>
-                <tr>
-                    <th>מק"ט</th>
-                    <th>תיאור</th>
-                    <th>מאושר</th>
-                    <th>בפועל</th>
-                    <th>פער</th>
-                    <th>סטטוס</th>
-                </tr>
-            </thead>
-            <tbody id="body"></tbody>
-        </table>
-    </div>
+<table>
+<thead>
+<tr>
+<th>SKU</th>
+<th>מחיר בפועל</th>
+<th>מחיר מאושר</th>
+<th>נמצא ב-DB</th>
+</tr>
+</thead>
 
-    <div id="dashboard" class="tab-content" style="display:none">
-        <div class="panel">
-            🚀 בקרוב: דשבורד גרפי עם גרפים והשוואות
-        </div>
-    </div>
+<tbody id="body"></tbody>
+</table>
+
+<div id="debug-box"></div>
+
 </div>
 
 <script>
 
-function switchTab(ev,id){
-    document.querySelectorAll('.tab-content').forEach(t=>t.style.display='none');
-    document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
-    document.getElementById(id).style.display='block';
-    ev.target.classList.add('active');
-}
-
 async function loadSuppliers(){
     const res = await fetch('/api/get-suppliers');
     const data = await res.json();
+
     const sel = document.getElementById('supplier');
     sel.innerHTML = '<option value="">בחר ספק</option>';
-    data.suppliers.forEach(s=> sel.innerHTML+=`<option>${s}</option>`);
+
+    data.suppliers.forEach(s => {
+        sel.innerHTML += `<option value="${s}">${s}</option>`;
+    });
 }
 
 async function analyze(){
+
     const sup = document.getElementById('supplier').value;
     const file = document.getElementById('file').files[0];
 
-    if(!sup || !file) return alert('בחר ספק וקובץ');
-
-    document.getElementById('loading').innerText = 'מעבד... ⏳';
+    if(!sup || !file){
+        alert("בחר ספק וקובץ");
+        return;
+    }
 
     const fd = new FormData();
-    fd.append('supplier_name',sup);
-    fd.append('invoice',file);
+    fd.append("supplier_name", sup);
+    fd.append("invoice", file);
 
-    const res = await fetch('/api/analyze-prices',{method:'POST',body:fd});
-    const data = await res.json();
-
-    document.getElementById('loading').innerText = '';
-
-    const body = document.getElementById('body');
-    const summary = document.getElementById('summary');
-
-    body.innerHTML='';
-
-    let ok=0,bad=0;
-
-    data.results.forEach(r=>{
-        if(r.is_match) ok++; else bad++;
-
-        body.innerHTML += `
-        <tr class="${r.is_match?'ok':'bad'}">
-        <td>${r.sku}</td>
-        <td>${r.description}</td>
-        <td>${r.approved_price}</td>
-        <td>${r.invoice_price}</td>
-        <td>${r.difference ?? '-'}</td>
-        <td>${r.status}</td>
-        </tr>`;
+    const res = await fetch('/api/analyze-prices', {
+        method: 'POST',
+        body: fd
     });
 
-    summary.innerHTML = `
-        <div class="card total">סה"כ: ${ok+bad}</div>
-        <div class="card ok">תקינים: ${ok}</div>
-        <div class="card bad">חריגים: ${bad}</div>
+    const data = await res.json();
+
+    console.log("FULL RESPONSE:", data);
+
+    // ✅ DEBUG על המסך
+    document.getElementById("debug-box").innerHTML = `
+        <h3>DEBUG</h3>
+        <p>כמות רשומות DB: ${data.debug?.db_count}</p>
+        <p>AI זיהה פריטים:</p>
+        <pre>${JSON.stringify(data.debug?.ai_items, null, 2)}</pre>
     `;
+
+    const body = document.getElementById("body");
+    body.innerHTML = "";
+
+    data.results.forEach(r=>{
+        body.innerHTML += `
+        <tr>
+            <td>${r.sku}</td>
+            <td>${r.invoice_price}</td>
+            <td>${r.approved_price ?? 'לא נמצא'}</td>
+            <td>${r.found_in_db ? '✅' : '❌'}</td>
+        </tr>`;
+    });
 }
 
 loadSuppliers();
