@@ -4,245 +4,96 @@
 <meta charset="UTF-8">
 <title>מערכת בקרה חכמה</title>
 
-<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600&display=swap" rel="stylesheet">
-
 <style>
+body { font-family: Arial; background:#f4f4f4; }
+.container { max-width:1000px; margin:auto; background:white; padding:20px; border-radius:10px; }
+button { padding:10px; background:blue; color:white; border:none; cursor:pointer; margin-top:10px; }
 
-body {
-    font-family: 'Heebo', sans-serif;
-    background: linear-gradient(135deg,#eef2ff,#f8fafc);
-    margin:0;
-}
-
-.container {
-    max-width: 1200px;
-    margin: 40px auto;
-    background: white;
-    padding: 25px;
-    border-radius: 16px;
-    box-shadow: 0 8px 30px rgba(0,0,0,0.1);
-}
-
-h2 {
-    text-align:center;
-}
-
-.row {
-    display:flex;
-    gap:15px;
-    flex-wrap:wrap;
-}
-
-.select-card, .search-card {
-    flex:1;
-}
-
-select, input {
-    width:100%;
-    padding:12px;
-    border-radius:10px;
-    border:1px solid #ddd;
-}
-
-.card {
-    padding:15px;
-    border-radius:12px;
-    text-align:center;
-    font-weight:bold;
-}
-
-.stats {
-    display:flex;
-    gap:10px;
-    margin-top:20px;
-}
-
-.stats .card {
-    flex:1;
-}
-
-.blue { background:#e0e7ff; }
-.green { background:#dcfce7; }
-.red { background:#fee2e2; }
-
-table {
-    width:100%;
-    border-collapse: collapse;
-    margin-top:20px;
-}
-
-th {
-    background:#4f46e5;
-    color:white;
-    padding:12px;
-    cursor:pointer;
-}
-
-td {
-    padding:10px;
-    border-bottom:1px solid #eee;
-}
-
-tr:hover {
-    background:#f1f5f9;
-}
-
-.loading {
-    text-align:center;
-    margin-top:10px;
-}
-
+.ok { background:#dcfce7; }
+.bad { background:#fee2e2; }
 </style>
-
 </head>
 
 <body>
 
 <div class="container">
 
-<h2>📊 מערכת ניהול מחירונים</h2>
+<h2>🤖 מערכת בקרה חכמה</h2>
 
-<div class="row">
-    <div class="select-card">
-        <label>בחר ספק</label>
-        <select id="supplier" onchange="loadPricelist()"></select>
-    </div>
+<select id="supplier"></select>
+<input type="file" id="file">
+<button onclick="analyze()">בדוק חשבונית</button>
 
-    <div class="search-card">
-        <label>🔍 חיפוש</label>
-        <input type="text" id="search" placeholder="חפש מקט או תיאור..." onkeyup="filterTable()">
-    </div>
-</div>
-
-<div class="stats" id="stats"></div>
-
-<div class="loading" id="loading"></div>
+<div id="insights"></div>
 
 <table>
 <thead>
 <tr>
-<th onclick="sortTable(0)">מק\"ט</th>
-<th onclick="sortTable(1)">תיאור</th>
-<th onclick="sortTable(2)">מחיר</th>
+<th>SKU</th>
+<th>מחיר חשבונית</th>
+<th>מחיר מאושר</th>
+<th>פער</th>
+<th>סטטוס</th>
 </tr>
 </thead>
-
 <tbody id="body"></tbody>
-
 </table>
 
 </div>
 
 <script>
 
-let tableData = [];
-
-
-// ✅ טעינת ספקים
 async function loadSuppliers(){
     const res = await fetch('/api/get-suppliers');
     const data = await res.json();
 
     const sel = document.getElementById("supplier");
-
-    sel.innerHTML = "<option value=''>בחר ספק</option>";
+    sel.innerHTML = "";
 
     data.suppliers.forEach(s=>{
-        sel.innerHTML += `<option value="${s}">${s}</option>`;
+        sel.innerHTML += `<option>${s}</option>`;
     });
 }
 
+async function analyze(){
 
-// ✅ טעינת מחירון
-async function loadPricelist(){
+    const sup = document.getElementById("supplier").value;
+    const file = document.getElementById("file").files[0];
 
-    const supplier = document.getElementById("supplier").value;
+    const fd = new FormData();
+    fd.append("supplier", sup);
+    fd.append("file", file);
 
-    if(!supplier) return;
+    const res = await fetch('/api/analyze-invoice', {
+        method:'POST',
+        body:fd
+    });
 
-    document.getElementById("loading").innerText = "טוען נתונים... ⏳";
-
-    const res = await fetch(`/api/get-pricelist?supplier=${supplier}`);
     const data = await res.json();
-
-    document.getElementById("loading").innerText = "";
-
-    if(data.error){
-        alert(data.error);
-        return;
-    }
-
-    tableData = data.items;
-    renderTable(tableData);
-    updateStats(tableData);
-}
-
-
-// ✅ ציור טבלה
-function renderTable(data){
 
     const body = document.getElementById("body");
     body.innerHTML = "";
 
-    data.forEach(item=>{
+    data.results.forEach(r=>{
         body.innerHTML += `
-        <tr>
-            <td>${item.sku}</td>
-            <td>${item.description}</td>
-            <td>${item.price}</td>
+        <tr class="${r.status === 'תקין' ? 'ok':'bad'}">
+        <td>${r.sku}</td>
+        <td>${r.invoice_price}</td>
+        <td>${r.approved_price ?? '-'}</td>
+        <td>${r.difference ?? '-'}</td>
+        <td>${r.status}</td>
         </tr>`;
     });
-}
 
-
-// ✅ חיפוש
-function filterTable(){
-
-    const text = document.getElementById("search").value.toLowerCase();
-
-    const filtered = tableData.filter(i =>
-        i.sku.toLowerCase().includes(text) ||
-        i.description.toLowerCase().includes(text)
-    );
-
-    renderTable(filtered);
-    updateStats(filtered);
-}
-
-
-// ✅ סטטיסטיקות
-function updateStats(data){
-
-    let total = data.length;
-    let avg = 0;
-
-    if(total > 0){
-        avg = data.reduce((sum,i)=>sum + Number(i.price),0) / total;
-    }
-
-    document.getElementById("stats").innerHTML = `
-        <div class="card blue">סה\"כ פריטים: ${total}</div>
-        <div class="card green">ממוצע מחיר: ${avg.toFixed(2)}</div>
-        <div class="card red">הפריט היקר ביותר: ${Math.max(...data.map(i=>i.price || 0))}</div>
+    document.getElementById("insights").innerHTML = `
+        <h3>📊 תובנות</h3>
+        סה"כ שורות: ${data.insights.total}<br>
+        חריגות: ${data.insights.issues}<br>
+        התראות:<br>
+        ${data.insights.alerts.join("<br>")}
     `;
 }
 
-
-// ✅ מיון
-function sortTable(col){
-
-    tableData.sort((a,b)=>{
-        if(col === 2){
-            return a.price - b.price;
-        }
-        return a[Object.keys(a)[col]].localeCompare(b[Object.keys(b)[col]]);
-    });
-
-    renderTable(tableData);
-}
-
-
-// init
 loadSuppliers();
 
 </script>
