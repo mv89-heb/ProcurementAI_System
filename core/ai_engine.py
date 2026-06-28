@@ -22,19 +22,16 @@ class AIEngine:
 
         prompt = """
         חלץ חשבונית.
-
         החזר JSON בלבד:
         {
           "items":[
             {
-              "sku": "string",
-              "description": "string",
-              "price": number
+              "sku":"string",
+              "description":"string",
+              "price":number
             }
           ]
         }
-
-        אל תמציא נתונים.
         """
 
         try:
@@ -49,8 +46,7 @@ class AIEngine:
 
             return json.loads(res.text).get("items", [])
 
-        except Exception as e:
-            print("AI ERROR:", e)
+        except:
             return []
 
     def extract_pricelist(self, file):
@@ -59,15 +55,13 @@ class AIEngine:
 
         prompt = """
         חלץ מחירון.
-
-        החזר JSON:
         {
-          "supplier_name": "string",
+          "supplier_name":"string",
           "items":[
             {
-              "sku": "string",
-              "description": "string",
-              "price": number
+              "sku":"string",
+              "description":"string",
+              "price":number
             }
           ]
         }
