@@ -2,32 +2,31 @@ import os
 import json
 import time
 
-DB_PATH = os.path.join(os.path.dirname(__file__), '..', 'database')
+DB_PATH = os.path.join(os.path.dirname(__file__), 'data_store')
 
 
 def init_db():
-    folders = ['pricelists', 'pricelists_history', 'invoices']
-    for folder in folders:
-        os.makedirs(os.path.join(DB_PATH, folder), exist_ok=True)
+    folders = ['pricelists', 'history']
+    for f in folders:
+        os.makedirs(os.path.join(DB_PATH, f), exist_ok=True)
 
 
 def safe_filename(name):
     return str(name).replace("/", "").replace("\\", "").replace("..", "").strip()
 
 
-def save_pricelist(supplier_name, data):
+def save_pricelist(supplier, data):
     init_db()
 
-    safe_sup = safe_filename(supplier_name) or "Unknown"
+    name = safe_filename(supplier) or "Unknown"
 
-    path = os.path.join(DB_PATH, "pricelists", f"{safe_sup}.json")
+    path = os.path.join(DB_PATH, "pricelists", f"{name}.json")
 
     with open(path, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
 
-    # היסטוריה
-    timestamp = int(time.time())
-    hist = os.path.join(DB_PATH, "pricelists_history", f"{safe_sup}_{timestamp}.json")
+    ts = int(time.time())
+    hist = os.path.join(DB_PATH, "history", f"{name}_{ts}.json")
 
     with open(hist, "w", encoding="utf-8") as f:
         json.dump(data, f, ensure_ascii=False, indent=2)
@@ -36,13 +35,12 @@ def save_pricelist(supplier_name, data):
 def get_all_suppliers():
     init_db()
     path = os.path.join(DB_PATH, "pricelists")
-
     return [f.replace(".json", "") for f in os.listdir(path) if f.endswith(".json")]
 
 
-def get_supplier_pricelist(supplier_name):
-    safe_sup = safe_filename(supplier_name)
-    path = os.path.join(DB_PATH, "pricelists", f"{safe_sup}.json")
+def get_supplier_pricelist(supplier):
+    name = safe_filename(supplier)
+    path = os.path.join(DB_PATH, "pricelists", f"{name}.json")
 
     if not os.path.exists(path):
         return {}
