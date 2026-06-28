@@ -27,7 +27,7 @@ class AIEngine:
         """
         try:
             res = self.client.models.generate_content(
-                model="gemini-2.5-flash",
+                model="gemini-2.0-flash", # וודא שזה המודל שאתה משתמש בו
                 contents=[part, prompt],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
@@ -42,9 +42,8 @@ class AIEngine:
     def get_embedding(self, text):
         try:
             res = self.client.models.embed_content(
-            model="text-embedding-005", # <--- שנה את המספר מ-004 ל-005
-            contents=text
-        )
+                model="text-embedding-004", # מודל ה-Embedding המומלץ כרגע
+                contents=text
             )
             # ג'מיני מחזיר רשימה של אובייקטים, ניקח את הראשון
             return res.embeddings[0].values
