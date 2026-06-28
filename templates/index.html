@@ -3,65 +3,205 @@
 <head>
 <meta charset="UTF-8">
 
-https://cdn.jsdelivr.net/npm/chart.js
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600&display=swap" rel="stylesheet">
 
 <style>
-body { background:#0f172a;color:white;font-family:Arial }
-.container{max-width:1100px;margin:auto;padding:20px}
-button{padding:10px;background:#6366f1;color:white;border:none;cursor:pointer}
-.ok{color:#22c55e}
-.bad{color:#ef4444}
-.warn{color:orange}
+
+body {
+    margin:0;
+    font-family:'Heebo',sans-serif;
+    background:#0f172a;
+    color:white;
+}
+
+/* LAYOUT */
+.wrapper {
+    display:flex;
+    height:100vh;
+}
+
+/* SIDEBAR */
+.sidebar {
+    width:220px;
+    background:#020617;
+    padding:20px;
+}
+
+.sidebar h2 {
+    font-size:18px;
+    margin-bottom:20px;
+}
+
+.sidebar button {
+    width:100%;
+    padding:12px;
+    margin-top:10px;
+    border:none;
+    background:#1e293b;
+    color:white;
+    border-radius:10px;
+    cursor:pointer;
+}
+
+.sidebar button:hover {
+    background:#334155;
+}
+
+/* MAIN */
+.main {
+    flex:1;
+    padding:20px;
+}
+
+/* TOP BAR */
+.topbar {
+    display:flex;
+    gap:10px;
+    margin-bottom:20px;
+}
+
+select, input {
+    padding:10px;
+    border-radius:10px;
+    border:none;
+    width:200px;
+}
+
+/* KPI */
+.kpi-container {
+    display:grid;
+    grid-template-columns:repeat(3,1fr);
+    gap:15px;
+}
+
+.kpi {
+    background:linear-gradient(135deg,#1e293b,#334155);
+    border-radius:12px;
+    padding:15px;
+    text-align:center;
+}
+
+/* TABLE */
+table {
+    width:100%;
+    margin-top:20px;
+    border-collapse:collapse;
+}
+
+th {
+    background:#1e293b;
+    padding:12px;
+}
+
+td {
+    padding:10px;
+    border-bottom:1px solid #334155;
+}
+
+tr:hover {
+    background:#1e293b;
+}
+
+/* STATUS */
+.ok { color:#22c55e; }
+.warn { color:#facc15; }
+.bad { color:#ef4444; }
+
+/* CARDS */
+.card {
+    background:#1e293b;
+    border-radius:12px;
+    padding:15px;
+}
+
+/* GRID */
+.grid {
+    display:grid;
+    grid-template-columns:2fr 1fr;
+    gap:20px;
+}
+
+/* LOADING */
+.loading {
+    margin-top:10px;
+    color:#aaa;
+}
+
 </style>
+
 </head>
 
 <body>
 
-<div class="container">
+<div class="wrapper">
 
-<h2>🤖 Smart Procurement</h2>
+<!-- SIDEBAR -->
+<div class="sidebar">
+    <h2>🤖 מערכת בקרה</h2>
 
-<select id="supplier" onchange="loadPricelist()"></select>
+    <button onclick="dashboard()">📊 דשבורד</button>
+    <button onclick="compare()">⚖️ השוואת ספקים</button>
+</div>
 
-<h3>📦 מחירון</h3>
+<!-- MAIN -->
+<div class="main">
+
+<!-- TOP -->
+<div class="topbar">
+    <select id="supplier"></select>
+    <input type="file" id="file">
+    <button onclick="analyze()">🔍 ניתוח חשבונית</button>
+</div>
+
+<!-- KPI -->
+<div class="kpi-container" id="kpis"></div>
+
+<!-- GRID -->
+<div class="grid">
+
+<!-- TABLE -->
+<div class="card">
 <table>
 <thead>
 <tr>
-<th>תיאור</th>
-<th>מחיר</th>
-</tr>
-</thead>
-<tbody id="price-body"></tbody>
-</table>
-
-<h3>📄 בדיקת חשבונית</h3>
-<input type="file" id="file">
-<button onclick="analyze()">בדוק</button>
-
-<h3>📊 תוצאות</h3>
-<table>
-<thead>
-<tr>
-<th>תיאור</th>
+<th>מוצר</th>
 <th>חשבונית</th>
 <th>מאושר</th>
 <th>פער</th>
 <th>סטטוס</th>
 </tr>
 </thead>
+
 <tbody id="body"></tbody>
 </table>
 
-<div id="alerts"></div>
+<div id="loading" class="loading"></div>
+</div>
+
+<!-- CHART -->
+<div class="card">
+<canvas id="chart"></canvas>
+</div>
+
+</div>
+
+<!-- ALERTS -->
+<div id="alerts" style="margin-top:20px;"></div>
+
+</div>
 
 </div>
 
 <script>
 
-let cache = {};
+let chart;
+let tableData = [];
 
 // ✅ ספקים
 async function loadSuppliers(){
+
     let res = await fetch('/api/get-suppliers')
     let data = await res.json()
 
@@ -73,52 +213,13 @@ async function loadSuppliers(){
     })
 }
 
-
-// ✅ טעינת מחירון (עם cache)
-async function loadPricelist(){
-
-    let supplier = document.getElementById("supplier").value
-    if(!supplier) return
-
-    if(cache[supplier]){
-        renderPricelist(cache[supplier])
-        return
-    }
-
-    let res = await fetch(`/api/get-pricelist?supplier=${supplier}`)
-    let data = await res.json()
-
-    cache[supplier] = data.items
-    renderPricelist(data.items)
-}
-
-
-// ✅ ציור מחירון
-function renderPricelist(items){
-
-    let body = document.getElementById("price-body")
-    body.innerHTML = ""
-
-    if(items.length === 0){
-        body.innerHTML = "<tr><td colspan='2'>⚠️ אין נתונים</td></tr>"
-        return
-    }
-
-    items.forEach(i=>{
-        body.innerHTML += `
-        <tr>
-        <td>${i.description}</td>
-        <td>${i.price}</td>
-        </tr>`
-    })
-}
-
-
-// ✅ בדיקת חשבונית
+// ✅ ניתוח
 async function analyze(){
 
-    const btn = document.querySelector("button")
+    let btn = event.target
     btn.disabled = true
+
+    document.getElementById("loading").innerText = "מעבד נתונים... ⏳"
 
     let sup = document.getElementById("supplier").value
     let file = document.getElementById("file").files[0]
@@ -127,24 +228,39 @@ async function analyze(){
     fd.append("supplier", sup)
     fd.append("file", file)
 
-    let res = await fetch('/api/analyze-invoice',{method:'POST',body:fd})
+    let res = await fetch('/api/analyze-invoice',{
+        method:'POST',
+        body:fd
+    })
+
     let data = await res.json()
 
-    render(data)
-
+    document.getElementById("loading").innerText = ""
     btn.disabled = false
+
+    tableData = data.results
+
+    renderAll(data)
 }
 
+// ✅ רנדור
+function renderAll(data){
+    renderTable(data.results)
+    renderKPIs(data.results)
+    renderChart(data.results)
+    renderAlerts(data.alerts)
+}
 
-// ✅ ציור תוצאות
-function render(data){
+// ✅ טבלה
+function renderTable(rows){
 
     let body = document.getElementById("body")
-    body.innerHTML = ""
+    body.innerHTML=""
 
-    data.results.forEach(r=>{
+    rows.forEach(r=>{
 
-        let cls = r.difference > 10 ? 'bad' : r.difference > 0 ? 'warn':'ok'
+        let cls = r.difference > 10 ? 'bad' :
+                  r.difference > 0 ? 'warn' : 'ok'
 
         body.innerHTML += `
         <tr>
@@ -155,14 +271,73 @@ function render(data){
         <td class="${cls}">${r.status}</td>
         </tr>`
     })
-
-    document.getElementById("alerts").innerHTML =
-        data.alerts.map(a=>`🔴 ${a}`).join("<br>")
 }
 
+// ✅ KPI
+function renderKPIs(rows){
+
+    let total = rows.length
+    let issues = rows.filter(r=>r.status !== 'תקין').length
+    let savings = rows.reduce((s,r)=> s + Math.max(-(r.difference||0),0),0)
+
+    document.getElementById("kpis").innerHTML = `
+        <div class="kpi">סה"כ<br>${total}</div>
+        <div class="kpi">חריגות<br>${issues}</div>
+        <div class="kpi">חיסכון<br>${savings.toFixed(2)}</div>
+    `
+}
+
+// ✅ גרף
+function renderChart(rows){
+
+    let labels = rows.map(r=>r.description)
+    let values = rows.map(r=>r.difference || 0)
+
+    if(chart) chart.destroy()
+
+    chart = new Chart(document.getElementById("chart"), {
+        type:'bar',
+        data:{
+            labels,
+            datasets:[{
+                label:'פערים',
+                data:values
+            }]
+        }
+    })
+}
+
+// ✅ alerts
+function renderAlerts(alerts){
+
+    document.getElementById("alerts").innerHTML =
+        alerts.map(a=>`<div style='color:red'>🔴 ${a}</div>`).join("")
+}
+
+// ✅ דשבורד
+async function dashboard(){
+
+    let res = await fetch('/api/dashboard')
+    let d = await res.json()
+
+    alert(`
+סה"כ פריטים: ${d.total}
+ממוצע מחיר: ${d.avg}
+`)
+}
+
+// ✅ השוואה
+async function compare(){
+    let name = prompt("שם מוצר")
+    let res = await fetch(`/api/compare-product?name=${name}`)
+    let d = await res.json()
+
+    alert(JSON.stringify(d,null,2))
+}
 
 loadSuppliers();
 
 </script>
+
 </body>
 </html>
