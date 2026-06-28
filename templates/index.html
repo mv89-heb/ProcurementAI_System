@@ -2,154 +2,39 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<title>Smart Procurement AI</title>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
-<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600&display=swap" rel="stylesheet">
-
 <style>
-
-body {
-    margin:0;
-    font-family:'Heebo',sans-serif;
-    background:linear-gradient(135deg,#0f172a,#1e293b);
-    color:white;
-}
-
-.container {
-    max-width:1200px;
-    margin:auto;
-    padding:20px;
-}
-
-/* HEADER */
-.header {
-    font-size:28px;
-    font-weight:bold;
-    text-align:center;
-    margin-bottom:20px;
-}
-
-/* GRID */
-.grid {
-    display:grid;
-    grid-template-columns:repeat(auto-fit, minmax(200px,1fr));
-    gap:15px;
-}
-
-/* CARDS */
-.card {
-    background:rgba(255,255,255,0.08);
-    backdrop-filter:blur(10px);
-    border-radius:12px;
-    padding:15px;
-}
-
-/* INPUTS */
-select,input,button {
-    width:100%;
-    padding:12px;
-    border-radius:10px;
-    border:none;
-    margin-top:5px;
-}
-
-button {
-    background:#6366f1;
-    color:white;
-    cursor:pointer;
-}
-
-button:hover {
-    background:#4f46e5;
-}
-
-/* TABLE */
-table {
-    width:100%;
-    margin-top:20px;
-    border-collapse:collapse;
-}
-
-th {
-    background:#4f46e5;
-    padding:12px;
-}
-
-td {
-    padding:10px;
-    border-bottom:1px solid rgba(255,255,255,0.1);
-}
-
-tr:hover {
-    background:rgba(255,255,255,0.05);
-}
-
-.ok { color:#22c55e; }
-.bad { color:#ef4444; }
-
-/* CHART */
-.chart-container {
-    margin-top:20px;
-}
-
-.loading {
-    text-align:center;
-    margin-top:10px;
-}
-
+body { background:#0f172a; color:white; font-family:Arial }
+.container{max-width:1100px;margin:auto;padding:20px}
+.card{background:#1e293b;padding:15px;border-radius:10px;margin:10px}
+button{background:#6366f1;color:white;padding:10px;border:none;cursor:pointer}
+.ok{color:#22c55e}
+.bad{color:#ef4444}
+.warn{color:orange}
 </style>
-
 </head>
 
 <body>
 
 <div class="container">
 
-<div class="header">🤖 Smart Procurement System</div>
+<h2>🤖 Smart Procurement System</h2>
 
-<!-- CONTROLS -->
-<div class="grid">
-
-<div class="card">
-<label>ספק</label>
 <select id="supplier"></select>
-</div>
 
-<div class="card">
-<label>חשבונית</label>
 <input type="file" id="file">
-<button onclick="analyze()">🔍 נתח</button>
-</div>
+<button onclick="analyze()">בדוק</button>
 
-<div class="card">
-<label>מחירון</label>
-<input type="file" id="pl">
-<button onclick="upload()">📥 העלה</button>
-</div>
+<div id="kpi"></div>
 
-<div class="card">
-<label>פעולות</label>
-<button onclick="compare()">⚖️ השווה מוצר</button>
-<button onclick="dashboard()">📊 דשבורד</button>
-</div>
-
-</div>
-
-<!-- KPI -->
-<div class="grid" id="kpis"></div>
-
-<!-- CHART -->
-<div class="chart-container">
 <canvas id="chart"></canvas>
-</div>
 
-<!-- TABLE -->
 <table>
 <thead>
 <tr>
-<th>מוצר</th>
+<th>תיאור</th>
 <th>חשבונית</th>
 <th>מאושר</th>
 <th>פער</th>
@@ -159,14 +44,16 @@ tr:hover {
 <tbody id="body"></tbody>
 </table>
 
-<div class="loading" id="loading"></div>
+<div id="alerts"></div>
 
 </div>
 
 <script>
 
 let chart;
+let cache = {};
 
+// ✅ ספקים
 async function loadSuppliers(){
     let res = await fetch('/api/get-suppliers')
     let data = await res.json()
@@ -175,106 +62,97 @@ async function loadSuppliers(){
     data.suppliers.forEach(s=> sel.innerHTML += `<option>${s}</option>`)
 }
 
-async function upload(){
-    let f = document.getElementById('pl').files[0]
-    let fd = new FormData()
-    fd.append("file",f)
 
-    let res = await fetch('/api/upload-pricelist',{method:'POST',body:fd})
-    let d = await res.json()
-
-    alert("✅ נשמר: "+d.supplier)
-}
-
+// ✅ analyze עם UX משופר
 async function analyze(){
 
-    let sup = document.getElementById('supplier').value
-    let f = document.getElementById('file').files[0]
+    const btn = document.querySelector("button")
+    btn.disabled = true
 
-    document.getElementById("loading").innerText = "מעבד... ⏳"
+    let sup = document.getElementById("supplier").value
+    let file = document.getElementById("file").files[0]
 
     let fd = new FormData()
     fd.append("supplier", sup)
-    fd.append("file", f)
+    fd.append("file", file)
 
     let res = await fetch('/api/analyze-invoice',{method:'POST',body:fd})
     let data = await res.json()
 
-    document.getElementById("loading").innerText = ""
+    localStorage.setItem("last_analysis", JSON.stringify(data))
 
-    renderTable(data.results)
-    renderKPIs(data.results)
-    renderChart(data.results)
+    render(data)
+
+    btn.disabled = false
 }
 
-function renderTable(rows){
 
+// ✅ render הכל
+function render(data){
+    renderTable(data.results)
+    renderKPI(data.results)
+    renderChart(data.results)
+    renderAlerts(data.alerts)
+}
+
+
+// ✅ טבלה
+function renderTable(rows){
     let body = document.getElementById("body")
     body.innerHTML=""
 
     rows.forEach(r=>{
+        let cls = r.difference > 10 ? 'bad' : r.difference > 0 ? 'warn':'ok'
+
         body.innerHTML += `
         <tr>
         <td>${r.description}</td>
         <td>${r.invoice_price}</td>
         <td>${r.approved_price ?? '-'}</td>
         <td>${r.difference ?? '-'}</td>
-        <td class="${r.status==='תקין'?'ok':'bad'}">${r.status}</td>
+        <td class="${cls}">${r.status}</td>
         </tr>`
     })
 }
 
-function renderKPIs(rows){
 
+// ✅ KPI
+function renderKPI(rows){
     let total = rows.length
     let issues = rows.filter(r=>r.status !== 'תקין').length
+    let savings = rows.reduce((s,r)=> s + Math.max(-(r.difference||0),0),0)
 
-    document.getElementById("kpis").innerHTML = `
-        <div class="card">סה"כ שורות: ${total}</div>
+    document.getElementById("kpi").innerHTML = `
+        <div class="card">סה"כ: ${total}</div>
         <div class="card">חריגות: ${issues}</div>
+        <div class="card">חיסכון: ${savings}</div>
     `
 }
 
-function renderChart(rows){
 
+// ✅ גרף
+function renderChart(rows){
     let labels = rows.map(r=>r.description)
-    let diffs = rows.map(r=>r.difference || 0)
+    let data = rows.map(r=>r.difference || 0)
 
     if(chart) chart.destroy()
 
-    chart = new Chart(document.getElementById('chart'), {
-        type: 'bar',
-        data: {
-            labels: labels,
-            datasets: [{
-                label: 'פערים',
-                data: diffs
-            }]
-        }
+    chart = new Chart(document.getElementById("chart"), {
+        type:'bar',
+        data:{ labels, datasets:[{label:"פערים",data}] }
     })
 }
 
-async function compare(){
-    let name = prompt("שם מוצר")
-    let res = await fetch(`/api/compare-product?name=${name}`)
-    let d = await res.json()
 
-    alert(JSON.stringify(d,null,2))
+// ✅ alerts
+function renderAlerts(alerts){
+    document.getElementById("alerts").innerHTML =
+        alerts.map(a=>`<div>🔴 ${a}</div>`).join("")
 }
 
-async function dashboard(){
-    let res = await fetch('/api/dashboard')
-    let d = await res.json()
-
-    alert(`
-סה"כ: ${d.total}
-ממוצע: ${d.avg}
-`)
-}
 
 loadSuppliers()
 
 </script>
-
 </body>
 </html>
