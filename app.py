@@ -1,13 +1,15 @@
-from flask import Flask, request, jsonify, render_template
 import os
-
-from db_utils import get_all_suppliers, get_supplier_pricelist, save_pricelist
-from ai_engine import AIEngine
+import psycopg2
+from psycopg2.extras import RealDictCursor
+from flask import Flask, request, jsonify, render_template
 
 app = Flask(__name__)
 
-# ✅ AI
-ai = AIEngine(os.environ.get("GEMINI_API_KEY"))
+DATABASE_URL = os.environ.get("DATABASE_URL")
+
+
+def get_db():
+    return psycopg2.connect(DATABASE_URL)
 
 
 # ✅ עמוד ראשי
@@ -16,68 +18,59 @@ def home():
     return render_template("index.html")
 
 
-# ✅ רשימת ספקים
+# ✅ ספקים מה־DB
 @app.route('/api/get-suppliers')
 def suppliers():
-    return jsonify({"suppliers": get_all_suppliers()})
+    try:
+        with get_db() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT DISTINCT supplier_name
+                    FROM pricelist_items
+                    ORDER BY supplier_name
+                """)
+                rows = cur.fetchall()
+
+        return jsonify({
+            "suppliers": [r["supplier_name"] for r in rows]
+        })
+
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
-# ✅ העלאת מחירון
-@app.route('/api/upload-pricelist', methods=['POST'])
-def upload_pricelist():
-
-    file = request.files.get("file")
-
-    if not file:
-        return jsonify({"error": "no file"}), 400
-
-    data = ai.extract_pricelist(file)
-
-    supplier = data.get("supplier_name", "Unknown")
-
-    save_pricelist(supplier, data)
-
-    return jsonify({
-        "status": "ok",
-        "supplier": supplier
-    })
-
-
-# ✅ בדיקת חשבונית
+# ✅ בדיקת חשבונית מול DB
 @app.route('/api/analyze-prices', methods=['POST'])
 def analyze():
 
     supplier = request.form.get("supplier_name")
-    file = request.files.get("invoice")
 
-    if not supplier or not file:
-        return jsonify({"error": "missing data"}), 400
+    if not supplier:
+        return jsonify({"error": "missing supplier"}), 400
 
-    pricelist = get_supplier_pricelist(supplier)
+    try:
+        with get_db() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("""
+                    SELECT sku, description, price
+                    FROM pricelist_items
+                    WHERE supplier_name = %s
+                """, (supplier,))
+                rows = cur.fetchall()
 
-    db = {
-        i.get("sku"): i.get("price")
-        for i in pricelist.get("items", [])
-    }
+        # ✅ אם אין נתונים
+        if not rows:
+            return jsonify({
+                "error": "אין נתונים לספק הזה",
+                "results": []
+            })
 
-    items = ai.extract_invoice(file)
-
-    results = []
-
-    for i in items:
-        sku = i.get("sku")
-        price = i.get("price", 0)
-
-        ref = db.get(sku)
-
-        results.append({
-            "sku": sku,
-            "invoice_price": price,
-            "approved_price": ref,
-            "found": ref is not None
+        return jsonify({
+            "results": rows
         })
 
-    return jsonify({"results": results})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
 
 if __name__ == "__main__":
