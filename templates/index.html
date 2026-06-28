@@ -2,305 +2,135 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
-
+<title>Procurement AI - Enterprise</title>
 <style>
-
-body {
-    margin:0;
-    font-family:"Inter", Arial;
-    background:#0b1220;
-    color:#e2e8f0;
-}
-
-/* --- LAYOUT --- */
-.container {
-    max-width:1200px;
-    margin:auto;
-    padding:30px;
-}
-
-/* --- HEADER --- */
-.header {
-    font-size:24px;
-    font-weight:bold;
-    margin-bottom:20px;
-}
-
-/* --- SELECT --- */
-select {
-    width:100%;
-    padding:10px;
-    border-radius:8px;
-    border:none;
-    background:#020617;
-    color:white;
-}
-
-/* --- BUTTON --- */
-button {
-    margin-top:10px;
-    background:linear-gradient(135deg,#6366f1,#4f46e5);
-    border:none;
-    padding:10px;
-    width:100%;
-    color:white;
-    border-radius:8px;
-    cursor:pointer;
-}
-
-button:hover {
-    opacity:0.9;
-}
-
-/* --- CARDS --- */
-.card {
-    background:#111827;
-    border-radius:12px;
-    padding:15px;
-    margin-top:15px;
-}
-
-/* --- GRID --- */
-.grid {
-    display:grid;
-    grid-template-columns:1fr 1fr;
-    gap:20px;
-}
-
-/* --- KPI --- */
-.kpi {
-    background:#1f2937;
-    padding:15px;
-    border-radius:10px;
-    text-align:center;
-}
-
-/* --- TOTAL GRID --- */
-.kpis {
-    display:grid;
-    grid-template-columns:repeat(3,1fr);
-    gap:10px;
-    margin-top:20px;
-}
-
-/* --- PRODUCT CARD --- */
-.product {
-    background:#111827;
-    padding:15px;
-    border-radius:12px;
-    margin-top:15px;
-}
-
-/* --- PRICE --- */
-.best {
-    color:#22c55e;
-    font-weight:bold;
-}
-
-.bad {
-    color:#ef4444;
-}
-
-/* --- TITLE --- */
-.title {
-    font-size:18px;
-    margin-bottom:10px;
-    color:#cbd5f5;
-}
-
-.subtitle {
-    font-size:13px;
-    color:#94a3b8;
-}
-
+    body { font-family:"Inter", Arial, sans-serif; background:#0f172a; color:#f8fafc; margin:0; padding:20px; }
+    .container { max-width:1200px; margin:auto; }
+    .header { font-size:28px; font-weight:800; margin-bottom:10px; color:#38bdf8; }
+    .company-badge { display:inline-block; background:#1e293b; padding:5px 15px; border-radius:20px; font-size:14px; margin-bottom:30px; border:1px solid #334155; }
+    .card { background:#1e293b; border-radius:12px; padding:20px; margin-bottom:20px; border:1px solid #334155; }
+    .title { font-size:18px; margin-bottom:15px; color:#e2e8f0; font-weight:bold; }
+    input[type="text"], input[type="file"], select { width:100%; padding:12px; border-radius:8px; border:1px solid #475569; background:#0f172a; color:white; margin-bottom:15px; box-sizing:border-box; }
+    button { background:#3b82f6; border:none; padding:12px 20px; width:100%; color:white; font-weight:bold; border-radius:8px; cursor:pointer; transition:0.3s; }
+    button:hover { background:#2563eb; }
+    .kpis { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:15px; margin-bottom:20px; }
+    .kpi { background:#0f172a; padding:20px; border-radius:10px; text-align:center; border:1px solid #334155; }
+    .kpi b { display:block; font-size:24px; color:#38bdf8; margin-top:10px; }
+    .product { background:#0f172a; padding:15px; border-radius:10px; margin-top:15px; border:1px solid #334155; }
+    .best { color:#10b981; font-weight:bold; } .bad { color:#ef4444; }
+    .loader { display:none; text-align:center; color:#38bdf8; margin:10px 0; font-weight:bold; }
 </style>
 </head>
-
 <body>
 
 <div class="container">
+    <div class="header">🚀 מנוע רכש AI - Enterprise</div>
+    <div class="company-badge" id="tenant-display">🏢 חברה: demo_company</div>
 
-<div class="header">
-🚀 מערכת השוואת ספקים מבוססת AI
-</div>
+    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
+        <div class="card">
+            <div class="title">📥 הזנת מחירון חדש (AI Processing)</div>
+            <input type="text" id="sup-name" placeholder="שם הספק (לדוגמה: אופיס דיפו)">
+            <input type="file" id="sup-file" accept=".pdf,image/*">
+            <button onclick="uploadPricelist()">עבד מחירון ושמור ב-DB</button>
+            <div id="upload-loader" class="loader">מעבד מסמך ומייצר וקטורים, אנא המתן...</div>
+        </div>
 
-<!-- SELECT -->
-<div class="card">
-<div class="title">בחר ספקים להשוואה</div>
+        <div class="card">
+            <div class="title">⚖️ מנוע השוואת ספקים חכמה</div>
+            <select id="suppliers" multiple size="5"></select>
+            <button onclick="compareSuppliers()">הרץ אלגוריתם השוואה</button>
+            <div id="compare-loader" class="loader">מחשב מרחקים וקטוריים...</div>
+        </div>
+    </div>
 
-<select id="suppliers" multiple size="5"></select>
-
-<button onclick="compare()">⚖️ בצע השוואה</button>
-</div>
-
-
-<!-- KPI -->
-<div id="kpis"></div>
-
-<!-- INSIGHTS -->
-<div id="insights"></div>
-
-<!-- RANKING -->
-<div id="ranking"></div>
-
-<!-- RESULTS -->
-<div id="results"></div>
-
+    <div id="dashboard"></div>
 </div>
 
 <script>
+    const COMPANY_ID = "demo_company"; // הגדרת Multi-Tenancy
 
-
-// ✅ טעינת ספקים
-async function loadSuppliers(){
-
-    let res = await fetch('/api/get-suppliers')
-    let data = await res.json()
-
-    let sel = document.getElementById("suppliers")
-
-    data.suppliers.forEach(s=>{
-        sel.innerHTML += `<option value="${s}">${s}</option>`
-    })
-}
-
-
-// ✅ השוואה
-async function compare(){
-
-    let sel = document.getElementById("suppliers")
-
-    let selected = Array.from(sel.selectedOptions)
-        .map(o=>o.value)
-
-    if(selected.length < 2){
-        alert("בחר לפחות 2 ספקים");
-        return;
+    async function loadSuppliers() {
+        try {
+            let res = await fetch(`/api/get-suppliers?company_id=${COMPANY_ID}`);
+            let data = await res.json();
+            let sel = document.getElementById("suppliers");
+            sel.innerHTML = "";
+            (data.suppliers || []).forEach(s => {
+                sel.innerHTML += `<option value="${s}">${s}</option>`;
+            });
+        } catch(e) { console.error("Error:", e); }
     }
 
-    let res = await fetch('/api/compare-suppliers',{
-        method:"POST",
-        headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({suppliers:selected})
-    })
+    async function uploadPricelist() {
+        let name = document.getElementById("sup-name").value;
+        let file = document.getElementById("sup-file").files[0];
+        if(!name || !file) return alert("הזן שם ספק וקובץ");
 
-    let data = await res.json()
+        document.getElementById("upload-loader").style.display = "block";
+        let fd = new FormData();
+        fd.append("company_id", COMPANY_ID);
+        fd.append("supplier_name", name);
+        fd.append("file", file);
 
-    renderAll(data)
-}
+        try {
+            let res = await fetch('/api/upload-pricelist', { method: 'POST', body: fd });
+            let data = await res.json();
+            document.getElementById("upload-loader").style.display = "none";
+            alert(data.message || data.error);
+            loadSuppliers(); // רענון רשימה
+        } catch(e) { alert("שגיאה בהעלאה"); }
+    }
 
+    async function compareSuppliers() {
+        let sel = document.getElementById("suppliers");
+        let selected = Array.from(sel.selectedOptions).map(o => o.value);
+        if(selected.length < 2) return alert("בחר לפחות 2 ספקים להשוואה");
 
-// ✅ רינדור הכל
-function renderAll(data){
+        document.getElementById("compare-loader").style.display = "block";
+        document.getElementById("dashboard").innerHTML = "";
 
-    renderKPI(data)
-    renderInsights(data)
-    renderRanking(data)
-    renderResults(data)
-}
+        try {
+            let res = await fetch('/api/compare-suppliers', {
+                method: "POST",
+                headers: {"Content-Type": "application/json"},
+                body: JSON.stringify({ company_id: COMPANY_ID, suppliers: selected })
+            });
+            let data = await res.json();
+            document.getElementById("compare-loader").style.display = "none";
+            
+            if(data.error) return alert(data.error);
+            renderDashboard(data);
+        } catch(e) { alert("שגיאה בחישוב"); }
+    }
 
+    function renderDashboard(data) {
+        let dash = document.getElementById("dashboard");
+        let html = `<div class="kpis">
+            <div class="kpi">מוצרים שהוצלבו<b>${data.results.length}</b></div>
+            <div class="kpi">ספקים נבדקו<b>${data.ranking.length}</b></div>
+        </div>`;
 
-// ✅ KPI
-function renderKPI(data){
+        html += `<div class="card"><div class="title">📊 תובנות (Insights)</div>`;
+        data.insights.forEach(i => html += `<div>${i}</div>`);
+        html += `</div><div class="card"><div class="title">🏆 תוצאות השוואה למוצר</div>`;
 
-    let totalProducts = data.results.length
-
-    let bestCount = 0
-
-    data.results.forEach(r => {
-        bestCount += r.offers.length
-    })
-
-    document.getElementById("kpis").innerHTML = `
-        <div class="kpis">
-
-            <div class="kpi">
-                📦 מוצרים מושווים<br>
-                <b>${totalProducts}</b>
-            </div>
-
-            <div class="kpi">
-                🛒 ספקים<br>
-                <b>${data.ranking.length}</b>
-            </div>
-
-            <div class="kpi">
-                ⚡ תובנות<br>
-                <b>${data.insights.length}</b>
-            </div>
-
-        </div>
-    `
-}
-
-
-// ✅ INSIGHTS
-function renderInsights(data){
-
-    document.getElementById("insights").innerHTML = `
-        <div class="card">
-            <div class="title">📊 תובנות חכמות</div>
-            ${data.insights.map(i => `<div>${i}</div>`).join("")}
-        </div>
-    `
-}
-
-
-// ✅ RANKING
-function renderRanking(data){
-
-    document.getElementById("ranking").innerHTML = `
-        <div class="card">
-            <div class="title">🏆 דירוג ספקים</div>
-
-            ${data.ranking.map(r => `
-                <div>
-                    ${r[0]} ➜ 
-                    <span class="${r[1] === 0 ? 'best':'bad'}">
-                        ${r[1].toFixed(2)}
-                    </span>
-                </div>
-            `).join("")}
-
-        </div>
-    `
-}
-
-
-// ✅ RESULTS
-function renderResults(data){
-
-    document.getElementById("results").innerHTML =
-        data.results.map(r => {
-
-            return `
-            <div class="product">
-
-                <div class="title">📦 ${r.product}</div>
-
-                <div class="subtitle">
-                ⭐ המלצה: ${r.best_supplier} (${r.best_price})
-                </div>
-
-                <br>
-
+        data.results.forEach(r => {
+            html += `<div class="product">
+                <div class="title" style="color:#cbd5e1; margin-bottom:5px;">📦 ${r.product}</div>
+                <div style="font-size:14px; margin-bottom:10px;">⭐ המלצת המערכת: <span class="best">${r.best_supplier} (${r.best_price} ₪)</span></div>
                 ${r.offers.map(o => `
-                    <div class="${o.difference === 0 ? 'best' : 'bad'}">
-                        🛒 ${o.supplier} ➜ ${o.price} (${o.difference})
+                    <div class="${o.difference === 0 ? 'best' : 'bad'}" style="font-size:13px; margin-top:4px;">
+                        🛒 ${o.supplier} ➜ ${o.price} ₪ ${o.difference > 0 ? `(+${o.difference})` : ''}
                     </div>
                 `).join("")}
+            </div>`;
+        });
+        
+        dash.innerHTML = html + "</div>";
+    }
 
-            </div>
-            `
-        }).join("")
-}
-
-
-// INIT
-loadSuppliers()
-
-
+    loadSuppliers();
 </script>
-
 </body>
 </html>
