@@ -4,5 +4,5 @@ psycopg2-binary
 pillow
 pymupdf
 google-genai
-numpy
+numpy>=1.26.0
 
