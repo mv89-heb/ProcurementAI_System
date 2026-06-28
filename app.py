@@ -1,140 +1,155 @@
 import os
-import json
 import psycopg2
-import numpy as np
 from psycopg2.extras import RealDictCursor
+from pgvector.psycopg2 import register_vector
 from flask import Flask, request, jsonify, render_template
-from google import genai
+from ai_engine import AIEngine
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder="templates")
 
-DATABASE_URL = os.environ.get("DATABASE_URL")
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY")
+DATABASE_URL = os.environ.get("DATABASE_URL", "")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 
-client = genai.Client(api_key=GEMINI_API_KEY)
-
+ai = AIEngine(GEMINI_API_KEY)
 
 def get_db():
-    return psycopg2.connect(DATABASE_URL)
-
-
-# ✅ embedding
-def get_embedding(text):
-    res = client.models.embed_content(
-        model="text-embedding-004",
-        content=text
-    )
-    return res.embeddings[0].values
-
-
-# ✅ cosine
-def cosine(a, b):
-    a = np.array(a)
-    b = np.array(b)
-    return float(np.dot(a, b) / (np.linalg.norm(a) * np.linalg.norm(b)))
-
+    conn = psycopg2.connect(DATABASE_URL)
+    register_vector(conn) # רישום pgvector מול ה-DB
+    return conn
 
 @app.route('/')
 def home():
     return render_template("index.html")
 
-
-# ✅ ספקים
-@app.route('/api/get-suppliers')
+# ✅ שליפת ספקים (לפי לקוח)
+@app.route('/api/get-suppliers', methods=['GET'])
 def suppliers():
-    with get_db() as conn:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute("SELECT DISTINCT supplier_name FROM pricelist_items")
-            rows = cur.fetchall()
+    company_id = request.args.get("company_id", "demo_company")
+    try:
+        with get_db() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                cur.execute("SELECT DISTINCT supplier_name FROM pricelist_items WHERE company_id = %s", (company_id,))
+                rows = cur.fetchall()
+        return jsonify({"suppliers": [r["supplier_name"] for r in rows]})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-    return jsonify({"suppliers":[r["supplier_name"] for r in rows]})
+# ✅ העלאת מחירון (הזרקת נתונים ו-Embeddings ל-DB)
+@app.route('/api/upload-pricelist', methods=['POST'])
+def upload_pricelist():
+    company_id = request.form.get("company_id", "demo_company")
+    supplier_name = request.form.get("supplier_name")
+    file = request.files.get("file")
+    
+    if not supplier_name or not file:
+        return jsonify({"error": "חסרים פרטים"}), 400
 
+    items = ai.extract_pricelist(file)
+    if not items:
+        return jsonify({"error": "לא זוהו פריטים במסמך"}), 400
 
-# ✅ השוואת ספקים + תובנות + המלצות
+    try:
+        with get_db() as conn:
+            with conn.cursor() as cur:
+                for item in items:
+                    desc = item.get("description", "")
+                    price = item.get("price", 0)
+                    sku = item.get("sku", "")
+                    if not desc or not sku: continue
+                    
+                    # יצירת Embedding לכל מוצר
+                    embedding = ai.get_embedding(desc)
+                    if not embedding: continue
+
+                    cur.execute("""
+                        INSERT INTO pricelist_items (company_id, supplier_name, sku, description, price, embedding)
+                        VALUES (%s, %s, %s, %s, %s, %s)
+                        ON CONFLICT (company_id, supplier_name, sku) DO UPDATE 
+                        SET price = EXCLUDED.price, description = EXCLUDED.description, embedding = EXCLUDED.embedding;
+                    """, (company_id, supplier_name, sku, desc, price, embedding))
+            conn.commit()
+        return jsonify({"message": f"המחירון של {supplier_name} עובד ונשמר בהצלחה!"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+
+# ✅ השוואת ספקים באמצעות pgvector
 @app.route('/api/compare-suppliers', methods=['POST'])
 def compare():
-
-    suppliers = request.json.get("suppliers")
+    data = request.json
+    company_id = data.get("company_id", "demo_company")
+    suppliers = data.get("suppliers", [])
 
     if not suppliers or len(suppliers) < 2:
-        return jsonify({"error":"בחר לפחות 2 ספקים"}), 400
+        return jsonify({"error": "בחר לפחות 2 ספקים"}), 400
 
-    with get_db() as conn:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
-
-            cur.execute("""
-                SELECT supplier_name, description, price, embedding
-                FROM pricelist_items
-                WHERE supplier_name = ANY(%s)
-                AND embedding IS NOT NULL
-            """, (suppliers,))
-
-            rows = cur.fetchall()
-
-    # ✅ grouping לפי embedding
-    groups = []
-
-    for item in rows:
-
-        matched = False
-
-        for g in groups:
-            score = cosine(item["embedding"], g[0]["embedding"])
-
-            if score > 0.85:
-                g.append(item)
-                matched = True
-                break
-
-        if not matched:
-            groups.append([item])
-
+    base_supplier = suppliers[0]
+    other_suppliers = suppliers[1:]
     results = []
-    supplier_scores = {}
+    supplier_scores = {s: 0 for s in suppliers}
 
-    for g in groups:
+    try:
+        with get_db() as conn:
+            with conn.cursor(cursor_factory=RealDictCursor) as cur:
+                # שליפת מוצרי ספק הבסיס
+                cur.execute("""
+                    SELECT sku, description, price, embedding 
+                    FROM pricelist_items 
+                    WHERE company_id = %s AND supplier_name = %s
+                """, (company_id, base_supplier))
+                base_items = cur.fetchall()
 
-        best = min(g, key=lambda x: x["price"])
+                for base_item in base_items:
+                    # חיפוש וקטורי ב-SQL מול שאר הספקים! (ה-Enterprise האמיתי)
+                    # אופרטור <=> מחשב מרחק קוסינוס (0 זה זהה לחלוטין, 1 זה שונה לגמרי)
+                    # לכן 1 - <=> נותן לנו את אחוז הדמיון.
+                    cur.execute("""
+                        SELECT supplier_name, description, price, 1 - (embedding <=> %s::vector) AS similarity
+                        FROM pricelist_items
+                        WHERE company_id = %s AND supplier_name = ANY(%s) AND 1 - (embedding <=> %s::vector) > 0.85
+                    """, (base_item['embedding'], company_id, other_suppliers, base_item['embedding']))
+                    
+                    matches = cur.fetchall()
+                    if not matches: continue
 
-        row = {
-            "product": best["description"],
-            "offers": [],
-            "best_supplier": best["supplier_name"],
-            "best_price": best["price"]
-        }
+                    # יצירת קבוצת ההשוואה
+                    group = [{"supplier": base_supplier, "price": float(base_item['price'])}]
+                    for m in matches:
+                        group.append({"supplier": m["supplier_name"], "price": float(m['price'])})
 
-        for i in g:
+                    best = min(group, key=lambda x: x["price"])
+                    
+                    row = {
+                        "product": base_item["description"],
+                        "offers": [],
+                        "best_supplier": best["supplier"],
+                        "best_price": best["price"]
+                    }
 
-            diff = i["price"] - best["price"]
+                    for offer in group:
+                        diff = offer["price"] - best["price"]
+                        supplier_scores[offer["supplier"]] += diff
+                        row["offers"].append({
+                            "supplier": offer["supplier"],
+                            "price": offer["price"],
+                            "difference": round(diff, 2)
+                        })
 
-            # ✅ score supplier
-            supplier = i["supplier_name"]
-            supplier_scores[supplier] = supplier_scores.get(supplier, 0) + diff
+                    row["offers"].sort(key=lambda x: x["price"])
+                    results.append(row)
 
-            row["offers"].append({
-                "supplier": supplier,
-                "price": i["price"],
-                "difference": round(diff,2)
-            })
+        ranking = sorted(supplier_scores.items(), key=lambda x: x[1])
+        insights = []
+        if ranking:
+            insights.append(f"🏆 הספק הזול ביותר: {ranking[0][0]}")
+            if len(ranking) > 1:
+                insights.append(f"📉 פער הפסד פוטנציאלי: {round(ranking[-1][1] - ranking[0][1], 2)} ₪")
 
-        row["offers"].sort(key=lambda x: x["price"])
-        results.append(row)
+        return jsonify({"results": results, "ranking": ranking, "insights": insights})
 
-    # ✅ ranking
-    ranking = sorted(supplier_scores.items(), key=lambda x: x[1])
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": "שגיאה בחישוב ההשוואה: " + str(e)}), 500
 
-    insights = []
-
-    if ranking:
-        insights.append(f"🏆 הספק הזול ביותר: {ranking[0][0]}")
-
-        if len(ranking) > 1:
-            insights.append(
-                f"📉 פער בין זול ליקר: {round(ranking[-1][1] - ranking[0][1],2)}"
-            )
-
-    return jsonify({
-        "results": results,
-        "ranking": ranking,
-        "insights": insights
-    })
+if __name__ == '__main__':
+    app.run(host='0.0.0.0', port=5000)
