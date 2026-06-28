@@ -8,14 +8,46 @@ import fitz
 from google import genai
 from google.genai import types
 
-# הגדרת התיקייה ל-templates כדי ש-Flask ימצא את ה-HTML
 app = Flask(__name__, template_folder='templates')
 
 GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "")
 DATABASE_URL = os.environ.get("DATABASE_URL", "")
+client = genai.Client(api_key=GEMINI_API_KEY)
 
 def get_db_connection():
     return psycopg2.connect(DATABASE_URL)
+
+# --- פונקציות עזר (AI ועיבוד) ---
+def convert_to_optimized_image_part(file_storage):
+    file_bytes = file_storage.read()
+    filename = file_storage.filename.lower()
+    try:
+        if filename.endswith('.pdf'):
+            doc = fitz.open(stream=file_bytes, filetype="pdf")
+            page = doc.load_page(0)
+            pix = page.get_pixmap(matrix=fitz.Matrix(2, 2))
+            return types.Part.from_bytes(data=pix.tobytes("jpeg"), mime_type='image/jpeg')
+        else:
+            img = Image.open(io.BytesIO(file_bytes))
+            img.thumbnail((1200, 1200))
+            buf = io.BytesIO()
+            img.save(buf, format='JPEG', quality=80)
+            return types.Part.from_bytes(data=buf.getvalue(), mime_type='image/jpeg')
+    except:
+        file_storage.seek(0)
+        return types.Part.from_bytes(data=file_storage.read(), mime_type='application/pdf')
+
+def extract_data_with_gemini(document_part, doc_type="price"):
+    import json
+    prompt = "חלץ מהמסמך את כל הפריטים. החזר מק''ט (sku), תיאור (description) ומחיר ליחידה (value)." if doc_type == "price" else "חלץ מק''ט וכמות."
+    response = client.models.generate_content(
+        model='gemini-2.5-flash',
+        contents=[document_part, prompt],
+        config=types.GenerateContentConfig(response_mime_type="application/json", temperature=0.0)
+    )
+    return json.loads(response.text).get("items", [])
+
+# --- API Endpoints ---
 
 @app.route('/')
 def home():
@@ -25,35 +57,12 @@ def home():
 def get_suppliers():
     try:
         conn = get_db_connection()
-        # שימוש נכון ב-RealDictCursor
         cursor = conn.cursor(cursor_factory=RealDictCursor)
         cursor.execute("SELECT DISTINCT supplier_name FROM pricelist_items ORDER BY supplier_name")
         rows = cursor.fetchall()
         suppliers = [row['supplier_name'] for row in rows]
-        cursor.close()
-        conn.close()
-        return jsonify({"suppliers": suppliers})
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
-
-@app.route('/api/upload-multiple-pricelists', methods=['POST'])
-def upload_multiple_pricelists():
-    file = request.files['pricelists']
-    supplier_name = os.path.splitext(file.filename.replace('\\', '/').split('/')[-1])[0]
-    try:
-        conn = get_db_connection()
-        cursor = conn.cursor(cursor_factory=RealDictCursor)
-        cursor.execute("SELECT 1 FROM pricelist_items WHERE supplier_name = %s LIMIT 1", (supplier_name,))
-        if cursor.fetchone():
-            cursor.close(); conn.close()
-            return jsonify({"message": "ספק קיים"})
-        
-        # (כאן אמורה להיות הלוגיקה של Gemini, השארתי את החיבור ל-DB תקין)
-        # ... לוגיקת Gemini ...
-        
-        conn.commit()
         cursor.close(); conn.close()
-        return jsonify({"message": "הצלחה"})
+        return jsonify({"suppliers": suppliers})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
@@ -67,9 +76,26 @@ def analyze_prices():
         rows = cursor.fetchall()
         cursor.close(); conn.close()
         
-        # כאן זה יעבוד כי rows הוא רשימה של מילונים
         pricelist = {row['sku']: {'description': row['description'], 'price': float(row['price'])} for row in rows}
-        return jsonify({"results": []}) # המשך הלוגיקה שלך
+        
+        # עיבוד ה-AI
+        part = convert_to_optimized_image_part(request.files['invoice'])
+        invoice_items = extract_data_with_gemini(part, "price")
+        
+        results = []
+        for item in invoice_items:
+            sku = item.get('sku')
+            inv_price = float(item.get('value', 0))
+            base = pricelist.get(sku)
+            results.append({
+                "sku": sku,
+                "description": item.get('description', ''),
+                "approved_price": base['price'] if base else 0,
+                "invoice_price": inv_price,
+                "status": "תקין" if base and inv_price <= base['price'] else "חריגה",
+                "is_match": base and inv_price <= base['price']
+            })
+        return jsonify({"results": results})
     except Exception as e:
         return jsonify({"error": str(e)}), 500
 
