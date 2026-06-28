@@ -7,61 +7,110 @@
     body { font-family:"Inter", Arial, sans-serif; background:#0f172a; color:#f8fafc; margin:0; padding:20px; }
     .container { max-width:1200px; margin:auto; }
     .header { font-size:28px; font-weight:800; margin-bottom:10px; color:#38bdf8; }
-    .company-badge { display:inline-block; background:#1e293b; padding:5px 15px; border-radius:20px; font-size:14px; margin-bottom:30px; border:1px solid #334155; }
+    .company-badge { display:inline-block; background:#1e293b; padding:5px 15px; border-radius:20px; font-size:14px; margin-bottom:20px; border:1px solid #334155; }
+    
+    /* Tabs System */
+    .tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #334155; padding-bottom: 10px; }
+    .tab-btn { background: transparent; color: #94a3b8; border: none; font-size: 16px; padding: 10px 20px; cursor: pointer; border-radius: 8px; transition: 0.3s; }
+    .tab-btn:hover { background: #1e293b; color: white; }
+    .tab-btn.active { background: #38bdf8; color: #0f172a; font-weight: bold; }
+    .tab-content { display: none; animation: fadeIn 0.3s ease-in-out; }
+    .tab-content.active { display: block; }
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+    /* UI Elements */
     .card { background:#1e293b; border-radius:12px; padding:20px; margin-bottom:20px; border:1px solid #334155; }
     .title { font-size:18px; margin-bottom:15px; color:#e2e8f0; font-weight:bold; }
     input[type="text"], input[type="file"], select { width:100%; padding:12px; border-radius:8px; border:1px solid #475569; background:#0f172a; color:white; margin-bottom:15px; box-sizing:border-box; }
     button { background:#3b82f6; border:none; padding:12px 20px; width:100%; color:white; font-weight:bold; border-radius:8px; cursor:pointer; transition:0.3s; }
     button:hover { background:#2563eb; }
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; background: #0f172a; border-radius: 8px; overflow: hidden; }
+    th, td { border: 1px solid #334155; padding: 12px; text-align: right; }
+    th { background: #1e293b; color: #38bdf8; }
+    .best { color:#10b981; font-weight:bold; } .bad { color:#ef4444; font-weight:bold; }
+    .loader { display:none; text-align:center; color:#38bdf8; margin:10px 0; font-weight:bold; }
     .kpis { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:15px; margin-bottom:20px; }
     .kpi { background:#0f172a; padding:20px; border-radius:10px; text-align:center; border:1px solid #334155; }
     .kpi b { display:block; font-size:24px; color:#38bdf8; margin-top:10px; }
-    .product { background:#0f172a; padding:15px; border-radius:10px; margin-top:15px; border:1px solid #334155; }
-    .best { color:#10b981; font-weight:bold; } .bad { color:#ef4444; }
-    .loader { display:none; text-align:center; color:#38bdf8; margin:10px 0; font-weight:bold; }
 </style>
 </head>
 <body>
 
 <div class="container">
     <div class="header">🚀 מנוע רכש AI - Enterprise</div>
-    <div class="company-badge" id="tenant-display">🏢 חברה: demo_company</div>
+    <div class="company-badge">🏢 חברה: demo_company</div>
 
-    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-        <div class="card">
-            <div class="title">📥 הזנת מחירון חדש (AI Processing)</div>
+    <div class="tabs">
+        <button class="tab-btn active" onclick="switchTab('tab-upload', this)">📥 העלאת מחירונים</button>
+        <button class="tab-btn" onclick="switchTab('tab-invoice', this)">🧾 בקרת חשבוניות</button>
+        <button class="tab-btn" onclick="switchTab('tab-compare', this)">⚖️ השוואת ספקים חכמה</button>
+    </div>
+
+    <div id="tab-upload" class="tab-content active">
+        <div class="card" style="max-width: 600px; margin: 0 auto;">
+            <div class="title">הזנת מחירון חדש (AI Processing)</div>
             <input type="text" id="sup-name" placeholder="שם הספק (לדוגמה: אופיס דיפו)">
             <input type="file" id="sup-file" accept=".pdf,image/*">
             <button onclick="uploadPricelist()">עבד מחירון ושמור ב-DB</button>
             <div id="upload-loader" class="loader">מעבד מסמך ומייצר וקטורים, אנא המתן...</div>
         </div>
+    </div>
 
+    <div id="tab-invoice" class="tab-content">
         <div class="card">
-            <div class="title">⚖️ מנוע השוואת ספקים חכמה</div>
-            <select id="suppliers" multiple size="5"></select>
-            <button onclick="compareSuppliers()">הרץ אלגוריתם השוואה</button>
-            <div id="compare-loader" class="loader">מחשב מרחקים וקטוריים...</div>
+            <div class="title">בקרת חשבונית מול מחירון מאושר</div>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
+                <select id="invoice-supplier" class="supplier-list"><option>טוען ספקים...</option></select>
+                <input type="file" id="invoice-file" accept=".pdf,image/*">
+            </div>
+            <button onclick="analyzeInvoice()">בצע בקרת מחירים</button>
+            <div id="invoice-loader" class="loader">מנתח חשבונית ומצליב מול מחירון...</div>
+            
+            <table id="invoice-table" style="display:none;">
+                <thead><tr><th>מק"ט</th><th>תיאור בחשבונית</th><th>מחיר מאושר (מחירון)</th><th>מחיר בחשבונית</th><th>סטטוס</th></tr></thead>
+                <tbody id="invoice-body"></tbody>
+            </table>
         </div>
     </div>
 
-    <div id="dashboard"></div>
+    <div id="tab-compare" class="tab-content">
+        <div class="card">
+            <div class="title">מנוע השוואת ספקים חכמה (Vector AI)</div>
+            <select id="compare-suppliers" class="supplier-list" multiple size="5"></select>
+            <button onclick="compareSuppliers()">הרץ אלגוריתם השוואה</button>
+            <div id="compare-loader" class="loader">מחשב מרחקים וקטוריים ב-DB...</div>
+        </div>
+        <div id="dashboard-results"></div>
+    </div>
+
 </div>
 
 <script>
-    const COMPANY_ID = "demo_company"; // הגדרת Multi-Tenancy
+    const COMPANY_ID = "demo_company";
 
+    // ניהול לשוניות
+    function switchTab(tabId, btn) {
+        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+        document.getElementById(tabId).classList.add('active');
+        btn.classList.add('active');
+    }
+
+    // טעינת ספקים לכל ה-Selects
     async function loadSuppliers() {
         try {
             let res = await fetch(`/api/get-suppliers?company_id=${COMPANY_ID}`);
             let data = await res.json();
-            let sel = document.getElementById("suppliers");
-            sel.innerHTML = "";
-            (data.suppliers || []).forEach(s => {
-                sel.innerHTML += `<option value="${s}">${s}</option>`;
+            let options = '<option value="">-- בחר ספק --</option>';
+            (data.suppliers || []).forEach(s => options += `<option value="${s}">${s}</option>`);
+            
+            document.querySelectorAll(".supplier-list").forEach(select => {
+                select.innerHTML = options;
             });
         } catch(e) { console.error("Error:", e); }
     }
 
+    // הפעלת העלאה
     async function uploadPricelist() {
         let name = document.getElementById("sup-name").value;
         let file = document.getElementById("sup-file").files[0];
@@ -78,17 +127,55 @@
             let data = await res.json();
             document.getElementById("upload-loader").style.display = "none";
             alert(data.message || data.error);
-            loadSuppliers(); // רענון רשימה
+            loadSuppliers(); 
         } catch(e) { alert("שגיאה בהעלאה"); }
     }
 
+    // הפעלת בקרת חשבונית
+    async function analyzeInvoice() {
+        let sup = document.getElementById("invoice-supplier").value;
+        let file = document.getElementById("invoice-file").files[0];
+        if(!sup || !file) return alert("בחר ספק והעלה חשבונית");
+
+        document.getElementById("invoice-loader").style.display = "block";
+        document.getElementById("invoice-table").style.display = "none";
+        
+        let fd = new FormData();
+        fd.append("company_id", COMPANY_ID);
+        fd.append("supplier_name", sup);
+        fd.append("invoice", file);
+
+        try {
+            let res = await fetch('/api/analyze-prices', { method: 'POST', body: fd });
+            let data = await res.json();
+            document.getElementById("invoice-loader").style.display = "none";
+            
+            if(data.error) return alert("שגיאה: " + data.error);
+            
+            let tbody = document.getElementById("invoice-body");
+            tbody.innerHTML = "";
+            data.results.forEach(r => {
+                let statusClass = r.is_match ? 'best' : 'bad';
+                tbody.innerHTML += `<tr>
+                    <td>${r.sku}</td>
+                    <td>${r.description}</td>
+                    <td>${r.approved_price} ₪</td>
+                    <td>${r.invoice_price} ₪</td>
+                    <td class="${statusClass}">${r.status}</td>
+                </tr>`;
+            });
+            document.getElementById("invoice-table").style.display = "table";
+        } catch(e) { alert("שגיאה בחישוב"); }
+    }
+
+    // הפעלת השוואת ספקים
     async function compareSuppliers() {
-        let sel = document.getElementById("suppliers");
+        let sel = document.getElementById("compare-suppliers");
         let selected = Array.from(sel.selectedOptions).map(o => o.value);
         if(selected.length < 2) return alert("בחר לפחות 2 ספקים להשוואה");
 
         document.getElementById("compare-loader").style.display = "block";
-        document.getElementById("dashboard").innerHTML = "";
+        document.getElementById("dashboard-results").innerHTML = "";
 
         try {
             let res = await fetch('/api/compare-suppliers', {
@@ -98,36 +185,22 @@
             });
             let data = await res.json();
             document.getElementById("compare-loader").style.display = "none";
-            
             if(data.error) return alert(data.error);
-            renderDashboard(data);
+            
+            let html = `<div class="kpis"><div class="kpi">מוצרים מוצלבים<b>${data.results.length}</b></div><div class="kpi">ספקים<b>${data.ranking.length}</b></div></div>`;
+            html += `<div class="card"><div class="title">📊 תובנות (Insights)</div>`;
+            data.insights.forEach(i => html += `<div>${i}</div>`);
+            html += `</div>`;
+            
+            data.results.forEach(r => {
+                html += `<div class="card" style="padding:15px; margin-bottom:15px;">
+                    <div class="title" style="margin-bottom:5px;">📦 ${r.product}</div>
+                    <div style="font-size:14px; margin-bottom:10px;">⭐ המלצה: <span class="best">${r.best_supplier} (${r.best_price} ₪)</span></div>
+                    ${r.offers.map(o => `<div class="${o.difference === 0 ? 'best' : 'bad'}" style="font-size:13px;">🛒 ${o.supplier} ➜ ${o.price} ₪ ${o.difference > 0 ? `(+${o.difference})` : ''}</div>`).join("")}
+                </div>`;
+            });
+            document.getElementById("dashboard-results").innerHTML = html;
         } catch(e) { alert("שגיאה בחישוב"); }
-    }
-
-    function renderDashboard(data) {
-        let dash = document.getElementById("dashboard");
-        let html = `<div class="kpis">
-            <div class="kpi">מוצרים שהוצלבו<b>${data.results.length}</b></div>
-            <div class="kpi">ספקים נבדקו<b>${data.ranking.length}</b></div>
-        </div>`;
-
-        html += `<div class="card"><div class="title">📊 תובנות (Insights)</div>`;
-        data.insights.forEach(i => html += `<div>${i}</div>`);
-        html += `</div><div class="card"><div class="title">🏆 תוצאות השוואה למוצר</div>`;
-
-        data.results.forEach(r => {
-            html += `<div class="product">
-                <div class="title" style="color:#cbd5e1; margin-bottom:5px;">📦 ${r.product}</div>
-                <div style="font-size:14px; margin-bottom:10px;">⭐ המלצת המערכת: <span class="best">${r.best_supplier} (${r.best_price} ₪)</span></div>
-                ${r.offers.map(o => `
-                    <div class="${o.difference === 0 ? 'best' : 'bad'}" style="font-size:13px; margin-top:4px;">
-                        🛒 ${o.supplier} ➜ ${o.price} ₪ ${o.difference > 0 ? `(+${o.difference})` : ''}
-                    </div>
-                `).join("")}
-            </div>`;
-        });
-        
-        dash.innerHTML = html + "</div>";
     }
 
     loadSuppliers();
