@@ -33,81 +33,57 @@ def get_suppliers():
             cur.execute("SELECT DISTINCT supplier_name FROM pricelist_items ORDER BY supplier_name")
             rows = cur.fetchall()
 
-    return jsonify({"suppliers": [r["supplier_name"] for r in rows]})
+    # ✅ ניקוי רווחים
+    suppliers = [r["supplier_name"].strip() for r in rows]
+
+    return jsonify({"suppliers": suppliers})
 
 
-# ✅ העלאת מחירון
-@app.route('/api/upload-pricelist', methods=['POST'])
-def upload_pricelist():
+# ✅ מחירון של ספק (תיקון BUG חשוב כאן!)
+@app.route('/api/get-pricelist')
+def get_pricelist():
 
-    file = request.files.get("file")
-    if not file:
-        return jsonify({"error": "no file"}), 400
+    supplier = request.args.get("supplier")
 
-    data = file.read()
-
-    part = types.Part.from_bytes(data=data, mime_type="application/pdf")
-
-    prompt = """
-    חלץ מחירון ספק.
-
-    חוקים:
-    - אל תמציא נתונים
-    - החזר JSON בלבד
-
-    {
-      "supplier_name":"string",
-      "items":[
-        {"sku":"string","description":"string","price":number}
-      ]
-    }
-    """
-
-    try:
-        res = client.models.generate_content(
-            model="gemini-2.5-flash",
-            contents=[part, prompt],
-            config=types.GenerateContentConfig(
-                response_mime_type="application/json",
-                temperature=0
-            )
-        )
-
-        parsed = json.loads(res.text)
-    except:
-        return jsonify({"error": "AI parsing failed"}), 500
-
-    supplier = parsed.get("supplier_name", "Unknown")
+    if not supplier:
+        return jsonify({"items": []})
 
     with get_db() as conn:
-        with conn.cursor() as cur:
-            for item in parsed.get("items", []):
-                cur.execute("""
-                    INSERT INTO pricelist_items (supplier_name, sku, description, price)
-                    VALUES (%s,%s,%s,%s)
-                """, (
-                    supplier,
-                    item.get("sku"),
-                    item.get("description"),
-                    item.get("price")
-                ))
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
 
-    return jsonify({"status": "saved", "supplier": supplier})
+            # ✅ DEBUG (אפשר למחוק אחרי)
+            print("Requested supplier:", supplier)
+
+            # ✅ תיקון מלא לבעיה
+            cur.execute("""
+                SELECT sku, description, price
+                FROM pricelist_items
+                WHERE TRIM(LOWER(supplier_name)) = TRIM(LOWER(%s))
+                ORDER BY description
+            """, (supplier,))
+
+            rows = cur.fetchall()
+
+            print("Rows:", len(rows))
+
+    return jsonify({"items": rows})
 
 
-# ✅ ניקוי טקסטים
+# ✅ ניקוי טקסט
 def clean(text):
+    if not text:
+        return ""
     return text.lower().replace("-", "").strip()
 
 
-# ✅ matching חכם
+# ✅ התאמה חכמה
 def find_match(desc, db_items):
     names = [clean(i["description"]) for i in db_items]
     match = get_close_matches(clean(desc), names, n=1, cutoff=0.6)
     return match[0] if match else None
 
 
-# ✅ AI חשבונית
+# ✅ קריאת חשבונית AI
 def extract_invoice(file):
 
     data = file.read()
@@ -121,10 +97,6 @@ def extract_invoice(file):
 
     prompt = """
     חלץ חשבונית.
-
-    חוקים:
-    - אל תמציא נתונים
-    - מחיר חייב להיות מספר
 
     JSON בלבד:
     {
@@ -167,7 +139,7 @@ def analyze():
 
     for i in invoice_items:
 
-        match_name = find_match(i.get("description",""), db_items)
+        match_name = find_match(i.get("description", ""), db_items)
 
         db_item = next(
             (x for x in db_items if clean(x["description"]) == match_name),
@@ -199,17 +171,5 @@ def analyze():
     })
 
 
-# ✅ דשבורד
-@app.route('/api/dashboard')
-def dashboard():
-
-    with get_db() as conn:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
-
-            cur.execute("SELECT COUNT(*) FROM pricelist_items")
-            total = cur.fetchone()["count"]
-
-            cur.execute("SELECT AVG(price) FROM pricelist_items")
-            avg = cur.fetchone()["avg"]
-
-    return jsonify({"total": total, "avg": avg})
+if __name__ == "__main__":
+    app.run(debug=True)
