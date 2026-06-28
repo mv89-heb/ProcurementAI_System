@@ -1,12 +1,10 @@
 import os
-import io
 import json
 import psycopg2
 from psycopg2.extras import RealDictCursor
 from flask import Flask, request, jsonify, render_template
-from PIL import Image
-import fitz
 from difflib import get_close_matches
+import fitz
 from google import genai
 from google.genai import types
 
@@ -32,12 +30,13 @@ def home():
 def get_suppliers():
     with get_db() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute("SELECT DISTINCT supplier_name FROM pricelist_items")
+            cur.execute("SELECT DISTINCT supplier_name FROM pricelist_items ORDER BY supplier_name")
             rows = cur.fetchall()
+
     return jsonify({"suppliers": [r["supplier_name"] for r in rows]})
 
 
-# ✅ העלאת מחירון (AI)
+# ✅ העלאת מחירון
 @app.route('/api/upload-pricelist', methods=['POST'])
 def upload_pricelist():
 
@@ -50,8 +49,12 @@ def upload_pricelist():
     part = types.Part.from_bytes(data=data, mime_type="application/pdf")
 
     prompt = """
-    חלץ מחירון ספק
-    JSON:
+    חלץ מחירון ספק.
+
+    חוקים:
+    - אל תמציא נתונים
+    - החזר JSON בלבד
+
     {
       "supplier_name":"string",
       "items":[
@@ -60,16 +63,20 @@ def upload_pricelist():
     }
     """
 
-    res = client.models.generate_content(
-        model="gemini-2.5-flash",
-        contents=[part, prompt],
-        config=types.GenerateContentConfig(
-            response_mime_type="application/json",
-            temperature=0
+    try:
+        res = client.models.generate_content(
+            model="gemini-2.5-flash",
+            contents=[part, prompt],
+            config=types.GenerateContentConfig(
+                response_mime_type="application/json",
+                temperature=0
+            )
         )
-    )
 
-    parsed = json.loads(res.text)
+        parsed = json.loads(res.text)
+    except:
+        return jsonify({"error": "AI parsing failed"}), 500
+
     supplier = parsed.get("supplier_name", "Unknown")
 
     with get_db() as conn:
@@ -88,23 +95,43 @@ def upload_pricelist():
     return jsonify({"status": "saved", "supplier": supplier})
 
 
-# ✅ AI קריאת חשבונית
+# ✅ ניקוי טקסטים
+def clean(text):
+    return text.lower().replace("-", "").strip()
+
+
+# ✅ matching חכם
+def find_match(desc, db_items):
+    names = [clean(i["description"]) for i in db_items]
+    match = get_close_matches(clean(desc), names, n=1, cutoff=0.6)
+    return match[0] if match else None
+
+
+# ✅ AI חשבונית
 def extract_invoice(file):
 
     data = file.read()
 
     if file.filename.endswith(".pdf"):
         doc = fitz.open(stream=data, filetype="pdf")
-        page = doc.load_page(0)
-        pix = page.get_pixmap()
+        pix = doc.load_page(0).get_pixmap()
         data = pix.tobytes("jpeg")
 
     part = types.Part.from_bytes(data=data, mime_type="image/jpeg")
 
     prompt = """
-    חלץ חשבונית
-    JSON:
-    {"items":[{"sku":"string","description":"string","price":number}]}
+    חלץ חשבונית.
+
+    חוקים:
+    - אל תמציא נתונים
+    - מחיר חייב להיות מספר
+
+    JSON בלבד:
+    {
+      "items":[
+        {"description":"string","price":number}
+      ]
+    }
     """
 
     try:
@@ -121,16 +148,6 @@ def extract_invoice(file):
         return []
 
 
-# ✅ matching חכם
-def find_match(desc, db_items):
-
-    names = [i["description"] for i in db_items]
-
-    match = get_close_matches(desc, names, n=1, cutoff=0.6)
-
-    return match[0] if match else None
-
-
 # ✅ בדיקת חשבונית
 @app.route('/api/analyze-invoice', methods=['POST'])
 def analyze():
@@ -140,7 +157,7 @@ def analyze():
 
     with get_db() as conn:
         with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute("""SELECT * FROM pricelist_items""")
+            cur.execute("SELECT * FROM pricelist_items")
             db_items = cur.fetchall()
 
     invoice_items = extract_invoice(file)
@@ -149,9 +166,13 @@ def analyze():
     alerts = []
 
     for i in invoice_items:
+
         match_name = find_match(i.get("description",""), db_items)
 
-        db_item = next((x for x in db_items if x["description"] == match_name), None)
+        db_item = next(
+            (x for x in db_items if clean(x["description"]) == match_name),
+            None
+        )
 
         if db_item:
             diff = float(i["price"]) - float(db_item["price"])
@@ -178,27 +199,6 @@ def analyze():
     })
 
 
-# ✅ השוואת ספקים
-@app.route('/api/compare-product')
-def compare():
-
-    name = request.args.get("name")
-
-    with get_db() as conn:
-        with conn.cursor(cursor_factory=RealDictCursor) as cur:
-            cur.execute("""
-                SELECT supplier_name, price, description
-                FROM pricelist_items
-            """)
-            rows = cur.fetchall()
-
-    matches = [r for r in rows if name.lower() in r["description"].lower()]
-
-    matches.sort(key=lambda x: x["price"])
-
-    return jsonify(matches)
-
-
 # ✅ דשבורד
 @app.route('/api/dashboard')
 def dashboard():
@@ -212,21 +212,4 @@ def dashboard():
             cur.execute("SELECT AVG(price) FROM pricelist_items")
             avg = cur.fetchone()["avg"]
 
-            cur.execute("""
-                SELECT description, MAX(price) as max_price
-                FROM pricelist_items
-                GROUP BY description
-                ORDER BY max_price DESC
-                LIMIT 5
-            """)
-            top = cur.fetchall()
-
-    return jsonify({
-        "total": total,
-        "avg": avg,
-        "top": top
-    })
-
-
-if __name__ == "__main__":
-    app.run(debug=True)
+    return jsonify({"total": total, "avg": avg})
