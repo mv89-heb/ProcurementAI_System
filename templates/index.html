@@ -3,50 +3,50 @@
 <head>
 <meta charset="UTF-8">
 
-<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+https://cdn.jsdelivr.net/npm/chart.js
 
-<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;600&display=swap" rel="stylesheet">
+https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap
 
 <style>
 
+/* BASE */
 body {
-    margin:0;
-    font-family:'Heebo',sans-serif;
-    background:#0f172a;
-    color:white;
+    margin: 0;
+    font-family: 'Inter', sans-serif;
+    background: radial-gradient(circle at top,#0f172a,#020617);
+    color: white;
 }
 
 /* LAYOUT */
 .wrapper {
-    display:flex;
-    height:100vh;
+    display: flex;
+    height: 100vh;
 }
 
 /* SIDEBAR */
 .sidebar {
-    width:220px;
-    background:#020617;
-    padding:20px;
+    width: 240px;
+    background: rgba(15,23,42,0.8);
+    backdrop-filter: blur(20px);
+    border-right: 1px solid rgba(255,255,255,0.1);
+    padding: 20px;
 }
 
 .sidebar h2 {
-    font-size:18px;
-    margin-bottom:20px;
+    color:#38bdf8;
 }
 
-.sidebar button {
-    width:100%;
-    padding:12px;
-    margin-top:10px;
-    border:none;
+.nav-btn {
+    margin-top: 10px;
+    padding: 12px;
+    border-radius: 10px;
+    background: rgba(255,255,255,0.05);
+    cursor: pointer;
+    transition: 0.3s;
+}
+
+.nav-btn:hover {
     background:#1e293b;
-    color:white;
-    border-radius:10px;
-    cursor:pointer;
-}
-
-.sidebar button:hover {
-    background:#334155;
 }
 
 /* MAIN */
@@ -62,32 +62,49 @@ body {
     margin-bottom:20px;
 }
 
-select, input {
+select,input {
     padding:10px;
     border-radius:10px;
     border:none;
-    width:200px;
+    background:#020617;
+    color:white;
+}
+
+button {
+    background: linear-gradient(135deg,#6366f1,#4338ca);
+    border:none;
+    padding:10px 20px;
+    border-radius:10px;
+    color:white;
+    cursor:pointer;
+    transition:0.3s;
+}
+
+button:hover {
+    transform:scale(1.05);
 }
 
 /* KPI */
-.kpi-container {
+.kpis {
     display:grid;
-    grid-template-columns:repeat(3,1fr);
+    grid-template-columns: repeat(3,1fr);
     gap:15px;
 }
 
 .kpi {
-    background:linear-gradient(135deg,#1e293b,#334155);
-    border-radius:12px;
-    padding:15px;
+    padding:20px;
+    border-radius:15px;
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(12px);
     text-align:center;
+    font-size:18px;
 }
 
 /* TABLE */
 table {
     width:100%;
+    border-collapse: collapse;
     margin-top:20px;
-    border-collapse:collapse;
 }
 
 th {
@@ -97,40 +114,48 @@ th {
 
 td {
     padding:10px;
-    border-bottom:1px solid #334155;
+    border-bottom:1px solid rgba(255,255,255,0.1);
 }
 
 tr:hover {
-    background:#1e293b;
+    background: rgba(255,255,255,0.05);
 }
 
 /* STATUS */
-.ok { color:#22c55e; }
-.warn { color:#facc15; }
-.bad { color:#ef4444; }
-
-/* CARDS */
-.card {
-    background:#1e293b;
-    border-radius:12px;
-    padding:15px;
+.badge {
+    padding:5px 10px;
+    border-radius:20px;
+    font-size:12px;
 }
 
-/* GRID */
+.ok { background:#22c55e }
+.warn { background:#facc15; color:black }
+.bad { background:#ef4444 }
+
+/* CARD GRID */
 .grid {
     display:grid;
     grid-template-columns:2fr 1fr;
     gap:20px;
 }
 
-/* LOADING */
-.loading {
+/* CARD */
+.card {
+    background: rgba(255,255,255,0.05);
+    backdrop-filter: blur(12px);
+    padding:20px;
+    border-radius:15px;
+}
+
+/* ALERTS */
+.alert {
     margin-top:10px;
-    color:#aaa;
+    padding:10px;
+    background:#7f1d1d;
+    border-radius:10px;
 }
 
 </style>
-
 </head>
 
 <body>
@@ -139,24 +164,24 @@ tr:hover {
 
 <!-- SIDEBAR -->
 <div class="sidebar">
-    <h2>🤖 מערכת בקרה</h2>
+    <h2>⚡ Procurement AI</h2>
 
-    <button onclick="dashboard()">📊 דשבורד</button>
-    <button onclick="compare()">⚖️ השוואת ספקים</button>
+    <div class="nav-btn" onclick="dashboard()">📊 Dashboard</div>
+    <div class="nav-btn" onclick="compare()">⚖️ Compare</div>
 </div>
 
 <!-- MAIN -->
 <div class="main">
 
-<!-- TOP -->
+<!-- TOP BAR -->
 <div class="topbar">
     <select id="supplier"></select>
     <input type="file" id="file">
-    <button onclick="analyze()">🔍 ניתוח חשבונית</button>
+    <button onclick="analyze()">Analyze</button>
 </div>
 
 <!-- KPI -->
-<div class="kpi-container" id="kpis"></div>
+<div class="kpis" id="kpis"></div>
 
 <!-- GRID -->
 <div class="grid">
@@ -174,10 +199,8 @@ tr:hover {
 </tr>
 </thead>
 
-<tbody id="body"></tbody>
+<tbody id="table"></tbody>
 </table>
-
-<div id="loading" class="loading"></div>
 </div>
 
 <!-- CHART -->
@@ -188,151 +211,145 @@ tr:hover {
 </div>
 
 <!-- ALERTS -->
-<div id="alerts" style="margin-top:20px;"></div>
+<div id="alerts"></div>
 
 </div>
-
 </div>
 
 <script>
 
 let chart;
-let tableData = [];
 
 // ✅ ספקים
 async function loadSuppliers(){
+    let res = await fetch("/api/get-suppliers");
+    let data = await res.json();
 
-    let res = await fetch('/api/get-suppliers')
-    let data = await res.json()
-
-    let sel = document.getElementById("supplier")
-    sel.innerHTML = "<option value=''>בחר ספק</option>"
+    let sel = document.getElementById("supplier");
+    sel.innerHTML = "<option>בחר ספק</option>";
 
     data.suppliers.forEach(s=>{
-        sel.innerHTML += `<option value="${s}">${s}</option>`
-    })
+        sel.innerHTML += `<option value="${s}">${s}</option>`;
+    });
 }
+
 
 // ✅ ניתוח
 async function analyze(){
 
-    let btn = event.target
-    btn.disabled = true
+    let sup = document.getElementById("supplier").value;
+    let file = document.getElementById("file").files[0];
 
-    document.getElementById("loading").innerText = "מעבד נתונים... ⏳"
+    let fd = new FormData();
+    fd.append("supplier", sup);
+    fd.append("file", file);
 
-    let sup = document.getElementById("supplier").value
-    let file = document.getElementById("file").files[0]
-
-    let fd = new FormData()
-    fd.append("supplier", sup)
-    fd.append("file", file)
-
-    let res = await fetch('/api/analyze-invoice',{
-        method:'POST',
+    let res = await fetch("/api/analyze-invoice", {
+        method:"POST",
         body:fd
-    })
+    });
 
-    let data = await res.json()
+    let data = await res.json();
 
-    document.getElementById("loading").innerText = ""
-    btn.disabled = false
-
-    tableData = data.results
-
-    renderAll(data)
+    renderAll(data);
 }
 
-// ✅ רנדור
+
+// ✅ RENDER
 function renderAll(data){
-    renderTable(data.results)
-    renderKPIs(data.results)
-    renderChart(data.results)
-    renderAlerts(data.alerts)
+    renderTable(data.results);
+    renderKpis(data.results);
+    renderChart(data.results);
+    renderAlerts(data.alerts);
 }
 
-// ✅ טבלה
+
+// ✅ TABLE
 function renderTable(rows){
 
-    let body = document.getElementById("body")
-    body.innerHTML=""
+    let t = document.getElementById("table");
+    t.innerHTML = "";
 
     rows.forEach(r=>{
 
-        let cls = r.difference > 10 ? 'bad' :
-                  r.difference > 0 ? 'warn' : 'ok'
+        let cls = r.difference > 10 ? "bad" :
+                  r.difference > 0 ? "warn" : "ok";
 
-        body.innerHTML += `
+        t.innerHTML += `
         <tr>
         <td>${r.description}</td>
         <td>${r.invoice_price}</td>
-        <td>${r.approved_price ?? '-'}</td>
-        <td>${r.difference ?? '-'}</td>
-        <td class="${cls}">${r.status}</td>
-        </tr>`
-    })
+        <td>${r.approved_price || "-"}</td>
+        <td>${r.difference || "-"}</td>
+        <td><span class="badge ${cls}">${r.status}</span></td>
+        </tr>`;
+    });
 }
+
 
 // ✅ KPI
-function renderKPIs(rows){
+function renderKpis(rows){
 
-    let total = rows.length
-    let issues = rows.filter(r=>r.status !== 'תקין').length
-    let savings = rows.reduce((s,r)=> s + Math.max(-(r.difference||0),0),0)
+    let total = rows.length;
+    let issues = rows.filter(r=>r.status !== "תקין").length;
+    let savings = rows.reduce((s,r)=> s + Math.max(-(r.difference||0),0),0);
 
     document.getElementById("kpis").innerHTML = `
-        <div class="kpi">סה"כ<br>${total}</div>
-        <div class="kpi">חריגות<br>${issues}</div>
-        <div class="kpi">חיסכון<br>${savings.toFixed(2)}</div>
-    `
+    <div class="kpi">סה"כ<br>${total}</div>
+    <div class="kpi">חריגות<br>${issues}</div>
+    <div class="kpi">💰 חיסכון<br>${savings.toFixed(2)}</div>
+    `;
 }
 
-// ✅ גרף
+
+// ✅ CHART
 function renderChart(rows){
 
-    let labels = rows.map(r=>r.description)
-    let values = rows.map(r=>r.difference || 0)
+    let labels = rows.map(r=>r.description);
+    let data = rows.map(r=>r.difference || 0);
 
-    if(chart) chart.destroy()
+    if(chart) chart.destroy();
 
     chart = new Chart(document.getElementById("chart"), {
-        type:'bar',
+        type:"bar",
         data:{
             labels,
             datasets:[{
-                label:'פערים',
-                data:values
+                label:"פערים",
+                data,
+                backgroundColor:"#6366f1"
             }]
         }
-    })
+    });
 }
 
-// ✅ alerts
+
+// ✅ ALERTS
 function renderAlerts(alerts){
 
-    document.getElementById("alerts").innerHTML =
-        alerts.map(a=>`<div style='color:red'>🔴 ${a}</div>`).join("")
+    let div = document.getElementById("alerts");
+
+    div.innerHTML = alerts.map(a =>
+        `<div class="alert">⚠️ ${a}</div>`
+    ).join("");
 }
 
-// ✅ דשבורד
+
+// ✅ dashboard
 async function dashboard(){
+    let res = await fetch("/api/dashboard");
+    let d = await res.json();
 
-    let res = await fetch('/api/dashboard')
-    let d = await res.json()
-
-    alert(`
-סה"כ פריטים: ${d.total}
-ממוצע מחיר: ${d.avg}
-`)
+    alert(`סה"כ: ${d.total}\nממוצע: ${d.avg}`);
 }
 
-// ✅ השוואה
+// ✅ compare
 async function compare(){
-    let name = prompt("שם מוצר")
-    let res = await fetch(`/api/compare-product?name=${name}`)
-    let d = await res.json()
+    let name = prompt("שם מוצר");
+    let res = await fetch(`/api/compare-product?name=${name}`);
+    let d = await res.json();
 
-    alert(JSON.stringify(d,null,2))
+    alert(JSON.stringify(d,null,2));
 }
 
 loadSuppliers();
