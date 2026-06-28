@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl">
 <head>
 <meta charset="UTF-8">
-<title>מערכת בקרה חכמה</title>
+<title>מערכת מחירונים</title>
 
 <style>
 body {
@@ -22,24 +22,10 @@ h2 {
     text-align: center;
 }
 
-select, input {
-    width: 100%;
-    padding: 8px;
-    margin-top: 10px;
-}
-
-button {
+select {
     width: 100%;
     padding: 10px;
-    background: #2563eb;
-    color: white;
-    border: none;
     margin-top: 10px;
-    cursor: pointer;
-}
-
-button:hover {
-    background: #1d4ed8;
 }
 
 table {
@@ -59,22 +45,8 @@ td {
     padding: 8px;
 }
 
-.ok {
-    background: #dcfce7;
-    color: green;
-}
-
-.bad {
-    background: #fee2e2;
-    color: red;
-}
-
-.card {
-    padding: 10px;
-    margin-top: 10px;
-    border-radius: 8px;
-    background: #e0e7ff;
-    text-align: center;
+tr:hover {
+    background: #f1f5f9;
 }
 </style>
 </head>
@@ -83,45 +55,23 @@ td {
 
 <div class="container">
 
-<h2>📊 מערכת בקרה חכמה</h2>
+<h2>📊 מערכת מחירונים</h2>
 
-<!-- --- העלאת מחירון --- -->
-<div class="card">
-<h3>📥 העלאת מחירון</h3>
-
-<input type="file" id="pricelistFile">
-<button onclick="uploadPricelist()">שמור מחירון</button>
-
-</div>
-
-<!-- --- בדיקת חשבונית --- -->
-<div class="card">
-<h3>🔍 בדיקת חשבונית</h3>
-
-<select id="supplier">
-    <option value="">בחר ספק</option>
+<label>בחר ספק:</label>
+<select id="supplier" onchange="loadPricelist()">
+    <option value="">טוען...</option>
 </select>
 
-<input type="file" id="invoice">
-
-<button onclick="analyze()">בדוק חשבונית</button>
-
-</div>
-
-<!-- --- סיכום --- -->
-<div id="summary"></div>
-
-<!-- --- טבלה --- -->
 <table>
 <thead>
 <tr>
-<th>מק\"ט</th>
-<th>מחיר בפועל</th>
-<th>מחיר מאושר</th>
-<th>סטטוס</th>
+<th>מק"ט</th>
+<th>תיאור</th>
+<th>מחיר</th>
 </tr>
 </thead>
-<tbody id="body"></tbody>
+
+<tbody id="table-body"></tbody>
 </table>
 
 </div>
@@ -130,6 +80,7 @@ td {
 
 // ✅ טען ספקים
 async function loadSuppliers(){
+
     const res = await fetch('/api/get-suppliers');
     const data = await res.json();
 
@@ -142,82 +93,33 @@ async function loadSuppliers(){
 }
 
 
-// ✅ העלאת מחירון
-async function uploadPricelist(){
-    const file = document.getElementById("pricelistFile").files[0];
-
-    if(!file){
-        alert("בחר קובץ מחירון");
-        return;
-    }
-
-    const fd = new FormData();
-    fd.append("file", file);
-
-    const res = await fetch('/api/upload-pricelist', {
-        method: "POST",
-        body: fd
-    });
-
-    const data = await res.json();
-
-    alert("מחירון נשמר עבור: " + data.supplier);
-
-    loadSuppliers();
-}
-
-
-// ✅ בדיקת חשבונית
-async function analyze(){
+// ✅ טען מחירון של ספק
+async function loadPricelist(){
 
     const supplier = document.getElementById("supplier").value;
-    const file = document.getElementById("invoice").files[0];
 
-    if(!supplier || !file){
-        alert("בחר ספק וקובץ");
+    if (!supplier) return;
+
+    const res = await fetch(`/api/get-pricelist?supplier=${supplier}`);
+    const data = await res.json();
+
+    if (data.error){
+        alert(data.error);
         return;
     }
 
-    const fd = new FormData();
-    fd.append("supplier_name", supplier);
-    fd.append("invoice", file);
-
-    const res = await fetch('/api/analyze-prices', {
-        method: "POST",
-        body: fd
-    });
-
-    const data = await res.json();
-
-    const body = document.getElementById("body");
-    const summary = document.getElementById("summary");
-
+    const body = document.getElementById("table-body");
     body.innerHTML = "";
 
-    let ok = 0;
-    let bad = 0;
-
-    data.results.forEach(r => {
-
-        let match = r.found;
-        if(match) ok++; else bad++;
-
+    data.items.forEach(item => {
         body.innerHTML += `
-        <tr class="${match ? 'ok':'bad'}">
-            <td>${r.sku}</td>
-            <td>${r.invoice_price}</td>
-            <td>${r.approved_price ?? '---'}</td>
-            <td>${match ? '✅ תקין':'❌ חריגה'}</td>
+        <tr>
+            <td>${item.sku}</td>
+            <td>${item.description}</td>
+            <td>${item.price}</td>
         </tr>
         `;
     });
-
-    summary.innerHTML = `
-        <div class="card">
-            ✅ תקינים: ${ok} |
-            ❌ חריגים: ${bad}
-        </div>
-    `;
 }
 
 
