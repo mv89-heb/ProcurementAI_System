@@ -8,41 +8,10 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root {
-            --bg-dark: #0f172a; 
-            --bg-panel: rgba(30, 41, 59, 0.75);
-            --glass-border: rgba(255, 255, 255, 0.08); 
-            --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
-            --accent-primary: #3b82f6; 
-            --accent-secondary: #8b5cf6;
-            --success: #10b981; 
-            --danger: #ef4444; 
-            --warning: #f59e0b;
-            --text-main: #f8fafc; 
-            --text-muted: #94a3b8;
-        }
-        
+        :root { --bg-dark: #0f172a; --bg-panel: rgba(30, 41, 59, 0.75); --glass-border: rgba(255, 255, 255, 0.08); --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4); --accent-primary: #3b82f6; --accent-secondary: #8b5cf6; --success: #10b981; --danger: #ef4444; --warning: #f59e0b; --text-main: #f8fafc; --text-muted: #94a3b8; }
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Rubik', sans-serif; }
-        
-        body {
-            background-color: var(--bg-dark); 
-            color: var(--text-main);
-            display: flex; 
-            height: 100vh; 
-            overflow: hidden;
-            background-image: 
-                radial-gradient(circle at 15% 50%, rgba(59,130,246,0.12), transparent 25%),
-                radial-gradient(circle at 85% 30%, rgba(139,92,246,0.12), transparent 25%);
-        }
-        
-        .glass-panel {
-            background: var(--bg-panel); 
-            backdrop-filter: blur(14px); 
-            -webkit-backdrop-filter: blur(14px);
-            border: 1px solid var(--glass-border); 
-            border-radius: 16px; 
-            box-shadow: var(--glass-shadow);
-        }
+        body { background-color: var(--bg-dark); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; background-image: radial-gradient(circle at 15% 50%, rgba(59,130,246,0.12), transparent 25%), radial-gradient(circle at 85% 30%, rgba(139,92,246,0.12), transparent 25%); }
+        .glass-panel { background: var(--bg-panel); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid var(--glass-border); border-radius: 16px; box-shadow: var(--glass-shadow); }
         
         /* Sidebar */
         .sidebar { width: 280px; height: 100%; padding: 24px; display: flex; flex-direction: column; gap: 12px; z-index: 10; }
@@ -139,26 +108,42 @@
         <div id="view-dashboard" class="view-section active">
             <div class="kpi-grid">
                 <div class="glass-panel kpi-card">
-                    <div class="kpi-header"><span>חיסכון פוטנציאלי מזוהה</span><div class="kpi-icon" style="color: var(--success);"><i class="fa-solid fa-piggy-bank"></i></div></div>
-                    <div class="kpi-value">₪42,500</div>
+                    <div class="kpi-header">
+                        <span title="נתון אמת: סך כל הספקים הייחודיים שנטענו לבסיס הנתונים (DB)">סה"כ ספקים פעילים <i class="fa-solid fa-circle-info" style="font-size:12px; opacity:0.6;"></i></span>
+                        <div class="kpi-icon" style="color: var(--accent-primary);"><i class="fa-solid fa-truck"></i></div>
+                    </div>
+                    <div class="kpi-value" id="kpi-suppliers-count"><i class="fa-solid fa-spinner fa-spin" style="font-size:16px;"></i></div>
                 </div>
+                
                 <div class="glass-panel kpi-card">
-                    <div class="kpi-header"><span>סה"כ ספקים פעילים</span><div class="kpi-icon" style="color: var(--accent-primary);"><i class="fa-solid fa-truck"></i></div></div>
-                    <div class="kpi-value" id="kpi-suppliers-count">-</div>
+                    <div class="kpi-header">
+                        <span title="נתון אמת: סך כל שורות המוצרים והמחירונים שקיימות במערכת">סה"כ פריטים ומק"טים <i class="fa-solid fa-circle-info" style="font-size:12px; opacity:0.6;"></i></span>
+                        <div class="kpi-icon" style="color: var(--success);"><i class="fa-solid fa-boxes-stacked"></i></div>
+                    </div>
+                    <div class="kpi-value" id="kpi-items-count"><i class="fa-solid fa-spinner fa-spin" style="font-size:16px;"></i></div>
                 </div>
-                <div class="glass-panel kpi-card">
-                    <div class="kpi-header"><span>חריגות מחיר שזוהו</span><div class="kpi-icon" style="color: var(--danger);"><i class="fa-solid fa-triangle-exclamation"></i></div></div>
-                    <div class="kpi-value">12</div>
+                
+                <div class="glass-panel kpi-card" style="opacity: 0.6;">
+                    <div class="kpi-header">
+                        <span title="נתון עתידי: יופעל לאחר חיבור מערכת החשבוניות / ERP">הזדמנויות חיסכון (ממתין לנתונים) <i class="fa-solid fa-circle-info" style="font-size:12px; opacity:0.6;"></i></span>
+                        <div class="kpi-icon" style="color: var(--warning);"><i class="fa-solid fa-piggy-bank"></i></div>
+                    </div>
+                    <div class="kpi-value">-</div>
                 </div>
             </div>
             
             <div class="charts-grid">
                 <div class="glass-panel chart-container">
-                    <div class="section-title">מגמות מחיר והזדמנויות חיסכון (AI Forecast)</div>
+                    <div class="section-title">
+                        מגמות מחיר (נתוני המחשה בלבד)
+                        <span title="גרף זה נועד להמחשה עד שיוזנו נתוני רכש היסטוריים למערכת" style="cursor:help; font-size:14px; color:var(--text-muted);"><i class="fa-solid fa-circle-info"></i></span>
+                    </div>
                     <canvas id="trendChart"></canvas>
                 </div>
                 <div class="glass-panel chart-container">
-                    <div class="section-title">התפלגות רכש</div>
+                    <div class="section-title">
+                        כמות פריטים לפי ספק (נתוני אמת)
+                    </div>
                     <canvas id="supplierChart"></canvas>
                 </div>
             </div>
@@ -259,7 +244,7 @@
                 
                 data.suppliers.forEach(s => {
                     selectHtml += `<option value="${s}">${s}</option>`;
-                    let score = Math.floor(Math.random() * 20) + 80;
+                    let score = Math.floor(Math.random() * 20) + 80; // ציון פיקטיבי להדגמת UI
                     tableHtml += `<tr>
                         <td style="font-weight:500;">${s}</td>
                         <td><span class="status-badge status-active">פעיל במערכת</span></td>
@@ -274,33 +259,55 @@
             } catch (e) { console.error("Error loading suppliers from database API"); }
         }
 
-        // --- Initialize Charts ---
-        function initCharts() {
-            Chart.defaults.color = '#94a3b8';
-            Chart.defaults.font.family = "'Rubik', sans-serif";
-            new Chart(document.getElementById('trendChart').getContext('2d'), {
-                type: 'line', 
-                data: { 
-                    labels: ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני'], 
-                    datasets: [
-                        { label: 'הוצאה בפועל', data: [120000, 115000, 118000, 105000, 102000, 98000], borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderWidth: 2, tension: 0.4, fill: true }, 
-                        { label: 'אופטימיזציית AI', data: [120000, 110000, 105000, 95000, 88000, 82000], borderColor: '#10b981', borderDash: [5, 5], borderWidth: 2, tension: 0.4 }
-                    ] 
-                }, 
-                options: { responsive: true, maintainAspectRatio: false, scales: { y: { grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { display: false } } } }
-            });
-            
-            new Chart(document.getElementById('supplierChart').getContext('2d'), {
-                type: 'doughnut', 
-                data: { 
-                    labels: ['לחמים', 'בשר', 'חד פעמי', 'אחרים'], 
-                    datasets: [{ data: [45, 25, 20, 10], backgroundColor: ['#3b82f6', '#8b5cf6', '#10b981', '#334155'], borderWidth: 0 }] 
-                }, 
-                options: { responsive: true, maintainAspectRatio: false, cutout: '70%' }
-            });
+        // --- Load Dashboard Real Stats ---
+        async function loadDashboardStats() {
+            try {
+                let res = await fetch('/api/get-dashboard-stats');
+                let data = await res.json();
+                
+                // עדכון סך כל הפריטים האמיתי ב-DB
+                document.getElementById('kpi-items-count').innerText = data.total_items.toLocaleString();
+                
+                // ציור גרף עוגה מנתוני אמת
+                const labels = data.distribution.map(d => d.supplier);
+                const counts = data.distribution.map(d => d.count);
+                
+                Chart.defaults.color = '#94a3b8';
+                Chart.defaults.font.family = "'Rubik', sans-serif";
+                
+                new Chart(document.getElementById('supplierChart').getContext('2d'), {
+                    type: 'doughnut', 
+                    data: { 
+                        labels: labels, 
+                        datasets: [{ 
+                            data: counts, 
+                            backgroundColor: ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444'], 
+                            borderWidth: 0 
+                        }] 
+                    }, 
+                    options: { responsive: true, maintainAspectRatio: false, cutout: '70%' }
+                });
+
+                // ציור גרף מגמות פיקטיבי (עד לחיבור נתוני ERP)
+                new Chart(document.getElementById('trendChart').getContext('2d'), {
+                    type: 'line', 
+                    data: { 
+                        labels: ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני'], 
+                        datasets: [
+                            { label: 'הוצאה בפועל (דמו)', data: [120000, 115000, 118000, 105000, 102000, 98000], borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderWidth: 2, tension: 0.4, fill: true }
+                        ] 
+                    }, 
+                    options: { responsive: true, maintainAspectRatio: false, scales: { y: { grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { display: false } } } }
+                });
+
+            } catch (e) { console.error("Error loading dashboard stats", e); }
         }
 
-        window.onload = () => { loadSuppliers(); initCharts(); };
+        // On window load
+        window.onload = () => { 
+            loadSuppliers(); 
+            loadDashboardStats(); 
+        };
 
         // --- Compare Suppliers ---
         async function runComparison() {
