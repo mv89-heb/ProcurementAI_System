@@ -1,14 +1,19 @@
 # -*- coding: utf-8 -*-
 import os
+import sys
 from flask import Flask, request, jsonify, render_template
 import psycopg2
 from ai_engine import AIEngine
 
+# הגדרת קידוד לפלט הטרמינל
+if sys.stdout.encoding != 'utf-8':
+    sys.stdout.reconfigure(encoding='utf-8')
+
 app = Flask(__name__, template_folder='.')
 
-# הגדרות סביבה (נלקחות מ-Render או מוגדרות מקומית)
-DATABASE_URL = os.environ.get("DATABASE_URL", "הכנס_כאן_את_הקישור_מ_NEON")
-GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "הכנס_כאן_את_המפתח")
+# הגדרות סביבה - נלקחות אוטומטית מ-Render או מההגדרות המקומיות שלך
+DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://neondb_owner:הסיסמה_שלך@ep-xxx-xxx.eu-central-1.aws.neon.tech/neondb?sslmode=require")
+GEMINI_API_KEY = os.environ.get("GEMINI_API_KEY", "AIzaSy...")
 COMPANY_ID = "demo_company"
 
 # אתחול מנוע ה-AI
@@ -19,38 +24,41 @@ def get_db_connection():
 
 @app.route('/')
 def index():
-    # מגיש את ממשק המשתמש
+    """הצגת דף הבית וממשק המערכת"""
     return render_template('index.html')
 
 @app.route('/api/get-suppliers', methods=['GET'])
 def get_suppliers():
+    """שליפת רשימת הספקים הייחודיים הקיימים ב-DB"""
     try:
         conn = get_db_connection()
         cur = conn.cursor()
-        cur.execute("SELECT DISTINCT supplier_name FROM pricelist_items WHERE company_id = %s ORDER BY supplier_name", (COMPANY_ID,))
+        query = "SELECT DISTINCT supplier_name FROM pricelist_items WHERE company_id = %s ORDER BY supplier_name"
+        cur.execute(query, (COMPANY_ID,))
         suppliers = [row[0] for row in cur.fetchall()]
         cur.close()
         conn.close()
         return jsonify({"suppliers": suppliers})
     except Exception as e:
         print("Error fetching suppliers:", e)
-        return jsonify({"error": "שגיאה בשליפת ספקים"}), 500
+        return jsonify({"error": "שגיאה בשליפת רשימת הספקים מהמחולל"}), 500
 
 @app.route('/api/compare-suppliers', methods=['POST'])
 def compare_suppliers():
-    data = request.json
+    """הצלבת מוצרים וחילוץ פערי מחירים בין הספקים שנבחרו"""
+    data = request.json or {}
     suppliers = data.get('suppliers', [])
     
     if len(suppliers) < 2:
-        return jsonify({"error": "יש לבחור לפחות 2 ספקים"}), 400
+        return jsonify({"error": "יש לבחור לפחות 2 ספקים לצורך ביצוע הצלבה"}), 400
         
     try:
         conn = get_db_connection()
         cur = conn.cursor()
         
-        # שליפת מוצרים חופפים בין הספקים שנבחרו
+        # שליפת כל הפריטים השייכים לספקים שנבחרו
         query = """
-            SELECT description, supplier_name, price 
+            SELECT description, supplier_name, price, sku 
             FROM pricelist_items 
             WHERE company_id = %s AND supplier_name = ANY(%s)
         """
@@ -59,16 +67,18 @@ def compare_suppliers():
         cur.close()
         conn.close()
         
-        # סידור התוצאות
+        # ארגון והצלבת פריטים לפי תיאור המוצר
         products_dict = {}
-        for desc, sup, price in rows:
-            if desc not in products_dict:
-                products_dict[desc] = []
-            products_dict[desc].append({"supplier": sup, "price": float(price)})
+        for desc, sup, price, sku in rows:
+            product_key = desc.strip() if desc and desc.strip() else f"מוצר ללא תיאור (מק\"ט {sku})"
+            if product_key not in products_dict:
+                products_dict[product_key] = []
+            products_dict[product_key].append({"supplier": sup, "price": float(price)})
         
         results = []
         for product, offers in products_dict.items():
-            if len(offers) > 1: # רק מוצרים שמופיעים אצל יותר מספק אחד
+            # מציגים רק מוצרים שמופיעים אצל יותר מספק אחד (הצלבה אמיתית)
+            if len(offers) > 1:
                 best_offer = min(offers, key=lambda x: x['price'])
                 for o in offers:
                     o['difference'] = round(o['price'] - best_offer['price'], 2)
@@ -80,9 +90,11 @@ def compare_suppliers():
                     "best_price": best_offer['price']
                 })
         
+        # יצירת תובנות דינמיות על בסיס נתוני האמת שנמצאו
+        savings_count = sum(1 for r in results if any(o['difference'] > 0 for o in r['offers']))
         insights = [
-            f"נמצאו {len(results)} מוצרים תואמים להשוואה.",
-            "בדוק את אפשרויות המשא ומתן עבור הפריטים בהם התגלה פער מחירים."
+            f"הצלבת הנתונים הושלמה: נמצאו {len(results)} מוצרים זהים בין הספקים שנבחרו.",
+            f"זוהו {savings_count} הזדמנויות למשא ומתן והוזלת עלויות ברכש הנוכחי."
         ]
         
         return jsonify({
@@ -92,27 +104,30 @@ def compare_suppliers():
         })
     except Exception as e:
         print("Compare Error:", e)
-        return jsonify({"error": "שגיאה בחישוב ההשוואה"}), 500
+        return jsonify({"error": f"שגיאה בעיבוד הנתונים מבסיס הנתונים: {str(e)}"}), 500
 
 @app.route('/api/generate-negotiation', methods=['POST'])
 def generate_negotiation():
-    data = request.json
+    """פנייה למנוע ג'מיני לצורך ניסוח מכתב מו\"מ עסקי"""
+    data = request.json or {}
     supplier = data.get('supplier', 'ספק')
     product = data.get('product', 'מוצר')
     current_price = data.get('currentPrice', 0)
     target_price = data.get('targetPrice', 0)
     aggressive = data.get('aggressive', False)
 
-    tone = "אסרטיבי, ענייני ומציב אולטימטום מרומז" if aggressive else "מנומס, שותפותי אך מקצועי"
+    tone = "אסרטיבי, חד משמעי ומציב אלטרנטיבות שוק" if aggressive else "שותפותי, מכובד ומקצועי"
     
     prompt = f"""
-    אתה מנהל רכש בכיר בחברת ענק. תפקידך לכתוב אימייל קצר וקולע לספק כדי להוריד מחירים.
-    פרטי המקרה:
-    - ספק: {supplier}
-    - מוצר: {product}
-    - מחיר נוכחי: {current_price} ש"ח
-    - מחיר יעד (שוק): {target_price} ש"ח
-    הנחיות: כתוב אימייל בעברית תקנית. הטון: {tone}. אל תמציא נתונים. החזר אך ורק את תוכן האימייל המוכן לשליחה.
+    אתה מנהל רכש בכיר. תפקידך לכתוב פנייה רשמית וקולעת באימייל לספק כדי לבקש הנחה והתאמת מחיר.
+    פרטי הפנייה:
+    - שם הספק: {supplier}
+    - שם הפריט/המוצר: {product}
+    - המחיר שאנו משלמים לו כיום: {current_price} ש"ח
+    - מחיר היעד שמצאנו אצל מתחרים בשוק: {target_price} ש"ח
+    הנחיות:
+    כתוב את המכתב בעברית עסקית רהוטה. הטון צריך להיות {tone}. אל תפרט נתונים שלא קיימים בפרומפט. 
+    החזר אך ורק את טקסט המכתב המוכן לשליחה ללא פתיחים כמו "הנה הטיוטה שלך".
     """
 
     try:
@@ -123,7 +138,7 @@ def generate_negotiation():
         return jsonify({"draft": res.text.strip(), "success": True})
     except Exception as e:
         print(f"Negotiation AI Error: {e}")
-        return jsonify({"error": "שגיאה ביצירת הטיוטה", "success": False}), 500
+        return jsonify({"error": "מנוע ה-AI לא זמין כרגע", "success": False}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
