@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import json
 from google import genai
 from google.genai import types
@@ -27,7 +28,7 @@ class AIEngine:
         """
         try:
             res = self.client.models.generate_content(
-                model="gemini-2.0-flash", # וודא שזה המודל שאתה משתמש בו
+                model="gemini-2.0-flash",
                 contents=[part, prompt],
                 config=types.GenerateContentConfig(
                     response_mime_type="application/json",
@@ -42,10 +43,9 @@ class AIEngine:
     def get_embedding(self, text):
         try:
             res = self.client.models.embed_content(
-                model="text-embedding-004", # מודל ה-Embedding המומלץ כרגע
+                model="text-embedding-004",
                 contents=text
             )
-            # ג'מיני מחזיר רשימה של אובייקטים, ניקח את הראשון
             return res.embeddings[0].values
         except Exception as e:
             print("Embedding Error:", e)
