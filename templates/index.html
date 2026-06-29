@@ -17,6 +17,7 @@
             --accent-secondary: #8b5cf6;
             --success: #10b981; 
             --danger: #ef4444; 
+            --warning: #f59e0b;
             --text-main: #f8fafc; 
             --text-muted: #94a3b8;
         }
@@ -24,15 +25,23 @@
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Rubik', sans-serif; }
         
         body {
-            background-color: var(--bg-dark); color: var(--text-main);
-            display: flex; height: 100vh; overflow: hidden;
-            background-image: radial-gradient(circle at 15% 50%, rgba(59,130,246,0.12), transparent 25%),
-                              radial-gradient(circle at 85% 30%, rgba(139,92,246,0.12), transparent 25%);
+            background-color: var(--bg-dark); 
+            color: var(--text-main);
+            display: flex; 
+            height: 100vh; 
+            overflow: hidden;
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(59,130,246,0.12), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(139,92,246,0.12), transparent 25%);
         }
         
         .glass-panel {
-            background: var(--bg-panel); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
-            border: 1px solid var(--glass-border); border-radius: 16px; box-shadow: var(--glass-shadow);
+            background: var(--bg-panel); 
+            backdrop-filter: blur(14px); 
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid var(--glass-border); 
+            border-radius: 16px; 
+            box-shadow: var(--glass-shadow);
         }
         
         /* Sidebar */
@@ -50,12 +59,12 @@
         .search-bar input { background: none; border: none; color: var(--text-main); outline: none; width: 100%; }
         .user-profile { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)); display: flex; align-items: center; justify-content: center; font-weight: bold; }
         
-        /* Views */
+        /* SPA Views */
         .view-section { display: none; animation: fadeIn 0.4s ease; flex-direction: column; gap: 24px; }
         .view-section.active { display: flex; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
 
-        /* KPI & Dashboard */
+        /* Dashboard & KPIs */
         .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; }
         .kpi-card { padding: 24px; display: flex; flex-direction: column; gap: 12px; transition: transform 0.3s; }
         .kpi-card:hover { transform: translateY(-5px); }
@@ -65,7 +74,7 @@
         .charts-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
         .chart-container { padding: 24px; height: 350px; }
         
-        /* Common */
+        /* Common Elements */
         .section-title { font-size: 18px; font-weight: 600; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
         .btn { padding: 12px 24px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; justify-content: center; transition: all 0.2s; }
         .btn-primary { background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)); color: white; }
@@ -89,17 +98,24 @@
         .status-badge { padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
         .status-active { background: rgba(16, 185, 129, 0.15); color: var(--success); }
 
-        /* Drawer */
+        /* Drawers & Modals */
         .drawer-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 99; opacity: 0; visibility: hidden; transition: all 0.3s ease; }
+        .drawer-overlay.open { opacity: 1; visibility: visible; }
+        
         .drawer { position: fixed; top: 0; left: -500px; width: 460px; height: 100%; background: rgba(15,23,42,0.95); border-right: 1px solid var(--glass-border); z-index: 100; transition: left 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); display: flex; flex-direction: column; }
-        .drawer.open { left: 0; } .drawer-overlay.open { opacity: 1; visibility: visible; }
+        .drawer.open { left: 0; } 
+        
         .drawer-header { display: flex; justify-content: space-between; align-items: center; padding: 24px; border-bottom: 1px solid var(--glass-border); }
         .drawer-title { font-size: 20px; font-weight: 600; display: flex; gap: 12px; align-items: center; }
         .close-btn { background: none; border: none; color: var(--text-muted); font-size: 22px; cursor: pointer; }
         .drawer-content { padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 24px; }
+        
         .context-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px; }
+        
+        /* Loading Skeleton */
         .skeleton-text { height: 16px; border-radius: 4px; background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.05) 75%); background-size: 200% 100%; animation: loading 1.5s infinite; margin-bottom: 12px; }
         @keyframes loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        
         .glass-textarea { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 12px; padding: 16px; color: var(--text-main); font-size: 14px; resize: vertical; line-height: 1.6; outline: none; }
     </style>
 </head>
@@ -123,7 +139,7 @@
         <div id="view-dashboard" class="view-section active">
             <div class="kpi-grid">
                 <div class="glass-panel kpi-card">
-                    <div class="kpi-header"><span>חיסכון פוטנציאלי</span><div class="kpi-icon" style="color: var(--success);"><i class="fa-solid fa-piggy-bank"></i></div></div>
+                    <div class="kpi-header"><span>חיסכון פוטנציאלי מזוהה</span><div class="kpi-icon" style="color: var(--success);"><i class="fa-solid fa-piggy-bank"></i></div></div>
                     <div class="kpi-value">₪42,500</div>
                 </div>
                 <div class="glass-panel kpi-card">
@@ -163,7 +179,6 @@
             <div class="glass-panel" style="padding: 24px;">
                 <div class="section-title" style="justify-content: space-between; display: flex; width: 100%;">
                     <span><i class="fa-solid fa-address-book" style="color:var(--accent-primary);"></i> רשימת ספקים במערכת</span>
-                    <button class="btn btn-primary" style="padding: 8px 16px; font-size: 14px;"><i class="fa-solid fa-plus"></i> הוסף ספק חדש</button>
                 </div>
                 <div class="table-container">
                     <table>
@@ -193,105 +208,101 @@
             <div class="glass-panel" style="padding: 16px;">
                 <div class="context-row"><span>ספק יעד:</span> <strong id="neg-supplier"></strong></div>
                 <div class="context-row"><span>המוצר המוצלב:</span> <strong id="neg-product"></strong></div>
-                <div class="context-row"><span>מחיר נוכחי:</span> <strong class="bad" id="neg-current-price"></strong></div>
-                <div class="context-row" style="border:none;"><span>מחיר יעד:</span> <strong class="best" id="neg-target-price"></strong></div>
+                <div class="context-row"><span>מחיר נוכחי במחירון:</span> <strong class="bad" id="neg-current-price"></strong></div>
+                <div class="context-row" style="border:none;"><span>מחיר מינימום בשוק:</span> <strong class="best" id="neg-target-price"></strong></div>
             </div>
+
             <div id="ai-loading" style="display: none; flex-direction: column;">
                 <div class="skeleton-text" style="width: 100%;"></div>
                 <div class="skeleton-text" style="width: 85%;"></div>
                 <div class="skeleton-text" style="width: 95%;"></div>
-                <div style="font-size: 13px; color: var(--accent-primary); text-align: center; margin-top: 10px;">מנסח פנייה אסטרטגית...</div>
+                <div style="font-size: 13px; color: var(--accent-primary); text-align: center; margin-top: 10px; font-weight: 500;">מנוע ה-AI מנתח את פערי השוק ומנסח פנייה...</div>
             </div>
+
             <div id="ai-result" style="display: none;">
-                <div style="font-size: 14px; margin-bottom: 10px; color: var(--text-muted);">טיוטת פנייה:</div>
+                <div style="font-size: 14px; margin-bottom: 10px; color: var(--text-muted); font-weight: 500;">טיוטת פנייה רשמית מוכנה לאישור:</div>
                 <textarea id="ai-draft-content" class="glass-textarea" rows="14"></textarea>
                 <div style="display: flex; gap: 10px; margin-top: 15px;">
-                    <button class="btn btn-secondary" style="flex: 1;" onclick="generateNegotiation(true)"><i class="fa-solid fa-bolt" style="color:var(--warning);"></i> אגרסיבי</button>
-                    <button class="btn btn-primary" style="flex: 1;" onclick="sendNegotiationEmail()"><i class="fa-solid fa-paper-plane"></i> שלח מייל</button>
+                    <button class="btn btn-secondary" style="flex: 1;" onclick="generateNegotiation(true)"><i class="fa-solid fa-bolt" style="color:var(--warning);"></i> ניסוח אגרסיבי</button>
+                    <button class="btn btn-primary" style="flex: 1;" onclick="sendNegotiationEmail()"><i class="fa-solid fa-paper-plane"></i> שלח מייל לספק</button>
                 </div>
             </div>
         </div>
     </div>
 
+    <div class="drawer-overlay" id="pricelist-overlay" onclick="closePricelistModal()"></div>
+    <div class="glass-panel" id="pricelist-modal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); width:80%; max-width:800px; max-height:80vh; z-index:101; flex-direction:column; padding:0;">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:24px; border-bottom:1px solid var(--glass-border); background:rgba(0,0,0,0.2); border-radius:16px 16px 0 0;">
+            <div class="drawer-title"><i class="fa-solid fa-list-check" style="color:var(--accent-primary);"></i> <span id="pricelist-modal-title">מחירון ספק</span></div>
+            <button class="close-btn" onclick="closePricelistModal()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div id="pricelist-modal-content" style="padding:24px; overflow-y:auto; flex:1;"></div>
+    </div>
+
     <script>
-        // --- ניהול מסכים (SPA Routing) ---
+        // --- SPA View Navigation ---
         function switchView(viewId, element) {
-            // הסתרת כל המסכים
             document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
-            // הסרת סימון פעיל מכל תפריט הצד
             document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
-            
-            // הצגת המסך המבוקש וסימון בתפריט
             document.getElementById(`view-${viewId}`).classList.add('active');
             if(element) element.classList.add('active');
         }
 
-        // --- טעינת ספקים לכל המערכת (מול ה-API) ---
+        // --- Load Suppliers from DB ---
         async function loadSuppliers() {
             try {
                 let res = await fetch('/api/get-suppliers');
                 let data = await res.json();
                 
-                // 1. אכלוס הרשימה בלוח ההשוואה
                 let selectHtml = '';
-                // 2. אכלוס הטבלה במסך "ניהול ספקים"
                 let tableHtml = '';
                 
                 data.suppliers.forEach(s => {
                     selectHtml += `<option value="${s}">${s}</option>`;
-                    // בניית שורת טבלה חכמה עם ציון AI רנדומלי לדוגמה
-                    let score = Math.floor(Math.random() * 20) + 80; // ציון בין 80 ל-99
+                    let score = Math.floor(Math.random() * 20) + 80;
                     tableHtml += `<tr>
                         <td style="font-weight:500;">${s}</td>
                         <td><span class="status-badge status-active">פעיל במערכת</span></td>
                         <td>⭐ ${score}/100</td>
-                        <td><button class="btn btn-secondary" style="padding: 6px 12px; font-size:12px;"><i class="fa-solid fa-folder-open"></i> צפה במחירון</button></td>
+                        <td><button class="btn btn-secondary" style="padding: 6px 12px; font-size:12px;" onclick="viewPricelist('${s}')"><i class="fa-solid fa-folder-open"></i> צפה במחירון</button></td>
                     </tr>`;
                 });
                 
                 document.getElementById('suppliers-select').innerHTML = selectHtml;
                 document.getElementById('suppliers-table-body').innerHTML = tableHtml;
-                
-                // עדכון מדד בלוח הבקרה
                 document.getElementById('kpi-suppliers-count').innerText = data.suppliers.length;
-
             } catch (e) { console.error("Error loading suppliers from database API"); }
         }
 
-        // --- אתחול גרפים בלוח הבקרה ---
+        // --- Initialize Charts ---
         function initCharts() {
             Chart.defaults.color = '#94a3b8';
             Chart.defaults.font.family = "'Rubik', sans-serif";
-
-            // גרף קו
             new Chart(document.getElementById('trendChart').getContext('2d'), {
-                type: 'line',
-                data: {
-                    labels: ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני'],
-                    datasets: [{ label: 'הוצאה בפועל (₪)', data: [120000, 115000, 118000, 105000, 102000, 98000], borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderWidth: 2, tension: 0.4, fill: true },
-                               { label: 'אופטימיזציית AI (₪)', data: [120000, 110000, 105000, 95000, 88000, 82000], borderColor: '#10b981', borderDash: [5, 5], borderWidth: 2, tension: 0.4 }]
-                },
+                type: 'line', 
+                data: { 
+                    labels: ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני'], 
+                    datasets: [
+                        { label: 'הוצאה בפועל', data: [120000, 115000, 118000, 105000, 102000, 98000], borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderWidth: 2, tension: 0.4, fill: true }, 
+                        { label: 'אופטימיזציית AI', data: [120000, 110000, 105000, 95000, 88000, 82000], borderColor: '#10b981', borderDash: [5, 5], borderWidth: 2, tension: 0.4 }
+                    ] 
+                }, 
                 options: { responsive: true, maintainAspectRatio: false, scales: { y: { grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { display: false } } } }
             });
-
-            // גרף עוגה
+            
             new Chart(document.getElementById('supplierChart').getContext('2d'), {
-                type: 'doughnut',
-                data: {
-                    labels: ['לחמים ומאפים', 'בשר ועופות', 'חד פעמי', 'אחרים'],
-                    datasets: [{ data: [45, 25, 20, 10], backgroundColor: ['#3b82f6', '#8b5cf6', '#10b981', '#334155'], borderWidth: 0 }]
-                },
+                type: 'doughnut', 
+                data: { 
+                    labels: ['לחמים', 'בשר', 'חד פעמי', 'אחרים'], 
+                    datasets: [{ data: [45, 25, 20, 10], backgroundColor: ['#3b82f6', '#8b5cf6', '#10b981', '#334155'], borderWidth: 0 }] 
+                }, 
                 options: { responsive: true, maintainAspectRatio: false, cutout: '70%' }
             });
         }
 
-        // הפעלת פונקציות טעינה כשהעמוד עולה
-        window.onload = () => {
-            loadSuppliers();
-            initCharts();
-        };
+        window.onload = () => { loadSuppliers(); initCharts(); };
 
-        // --- לוגיקת השוואת ספקים ---
+        // --- Compare Suppliers ---
         async function runComparison() {
             let sel = document.getElementById("suppliers-select");
             let selected = Array.from(sel.selectedOptions).map(o => o.value);
@@ -301,47 +312,44 @@
 
             try {
                 let res = await fetch('/api/compare-suppliers', {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ suppliers: selected })
+                    method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ suppliers: selected })
                 });
                 let data = await res.json();
                 
                 let html = '';
+                
                 if (data.insights && data.insights.length > 0) {
-                    html += `<div class="glass-panel" style="padding:20px; margin-bottom:20px; background:rgba(59,130,246,0.04);">
-                        <div class="section-title" style="color:var(--accent-primary); margin-bottom:10px;"><i class="fa-solid fa-brain"></i> תובנות AI מנתוני האמת</div>`;
+                    html += `<div class="glass-panel" style="padding:20px; margin-bottom:20px; background:rgba(59,130,246,0.04);"><div class="section-title" style="color:var(--accent-primary); margin-bottom:10px;"><i class="fa-solid fa-brain"></i> תובנות AI מנתוני האמת</div>`;
                     data.insights.forEach(ins => html += `<div style="font-size:14px; margin-bottom:6px;">💡 ${ins}</div>`);
                     html += `</div>`;
                 }
 
                 data.results.forEach(r => {
-                    html += `<div class="result-card">
-                        <div class="section-title">📦 ${r.product}</div>
-                        <div style="margin-bottom: 15px; font-size:14px;">⭐ מחיר שוק מומלץ (יעד): <span class="best">₪${r.best_price} (${r.best_supplier})</span></div>`;
+                    html += `<div class="result-card"><div class="section-title">📦 ${r.product}</div><div style="margin-bottom: 15px; font-size:14px;">⭐ מחיר שוק מומלץ (יעד): <span class="best">₪${r.best_price} (${r.best_supplier})</span></div>`;
                     
                     r.offers.forEach(o => {
-                        let isPriceGap = o.difference > 0;
+                        let isGap = o.difference > 0;
                         html += `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px; padding: 12px; background: rgba(0,0,0,0.15); border-radius: 8px; border:1px solid rgba(255,255,255,0.03);">
-                            <span style="font-size:14px;" class="${isPriceGap ? 'bad' : 'best'}">🛒 ${o.supplier} ➜ ₪${o.price} ${isPriceGap ? `(+₪${o.difference})` : ' (המחיר הזול ביותר)'}</span>`;
+                            <span style="font-size:14px;" class="${isGap ? 'bad' : 'best'}">🛒 ${o.supplier} ➜ ₪${o.price} ${isGap ? `(+₪${o.difference})` : ' (המחיר הזול ביותר)'}</span>`;
                         
-                        if (isPriceGap) {
-                            html += `<button class="btn btn-secondary" style="padding: 6px 14px; font-size: 12px;" 
-                                onclick="openNegotiationDrawer('${o.supplier}', '${r.product}', ${o.price}, ${r.best_price})">
-                                <i class="fa-solid fa-robot" style="color:var(--accent-primary);"></i> הפעל סוכן מו"מ</button>`;
+                        if (isGap) {
+                            html += `<button class="btn btn-secondary" style="padding: 6px 14px; font-size: 12px;" onclick="openNegotiationDrawer('${o.supplier}', '${r.product}', ${o.price}, ${r.best_price})"><i class="fa-solid fa-robot" style="color:var(--accent-primary);"></i> הפעל סוכן מו"מ</button>`;
                         }
                         html += `</div>`;
                     });
                     html += `</div>`;
                 });
                 
-                if(data.results.length === 0) html = '<div class="glass-panel" style="padding:40px; text-align:center; color:var(--text-muted);">לא נמצאו מוצרים חופפים ישירים להצלבה בין הספקים שנבחרו.</div>';
+                if(data.results.length === 0) {
+                    html = '<div class="glass-panel" style="padding:40px; text-align:center; color:var(--text-muted);"><i class="fa-solid fa-folder-open" style="margin-bottom:10px; font-size:24px;"></i><br>לא נמצאו מוצרים חופפים ישירים להצלבה בין הספקים שנבחרו.</div>';
+                }
                 document.getElementById("results-container").innerHTML = html;
             } catch(e) { document.getElementById("results-container").innerHTML = '<div class="bad" style="padding:20px;">שגיאה בעיבוד נתוני ההשוואה.</div>'; }
         }
 
-        // --- מו"מ אוטומטי ---
+        // --- AI Negotiation Logic ---
         let currentNegotiationData = {};
+        
         function openNegotiationDrawer(supplier, product, currentPrice, targetPrice) {
             currentNegotiationData = { supplier, product, currentPrice, targetPrice };
             document.getElementById("neg-supplier").innerText = supplier;
@@ -353,28 +361,85 @@
             document.getElementById("negotiation-drawer").classList.add("open");
             generateNegotiation(false);
         }
+        
         function closeNegotiationDrawer() {
             document.getElementById("negotiation-overlay").classList.remove("open");
             document.getElementById("negotiation-drawer").classList.remove("open");
         }
+        
         async function generateNegotiation(isAggressive) {
             document.getElementById("ai-loading").style.display = "flex";
             document.getElementById("ai-result").style.display = "none";
+            
             try {
-                let res = await fetch('/api/generate-negotiation', {
-                    method: 'POST', headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ ...currentNegotiationData, aggressive: isAggressive })
+                let res = await fetch('/api/generate-negotiation', { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ ...currentNegotiationData, aggressive: isAggressive }) 
                 });
                 let data = await res.json();
                 document.getElementById("ai-loading").style.display = "none";
                 document.getElementById("ai-draft-content").value = data.draft;
                 document.getElementById("ai-result").style.display = "block";
-            } catch (e) { alert("שגיאה בפנייה למנוע ה-AI"); document.getElementById("ai-loading").style.display = "none"; }
+            } catch (e) { 
+                alert("שגיאה בפנייה למנוע ה-AI"); 
+                document.getElementById("ai-loading").style.display = "none"; 
+            }
         }
+        
         function sendNegotiationEmail() {
             const text = document.getElementById("ai-draft-content").value;
-            window.location.href = `mailto:?subject=עדכון תנאים מסחריים - ${currentNegotiationData.supplier}&body=${encodeURIComponent(text)}`;
+            window.location.href = `mailto:?subject=עדכון תנאים מסחריים והתאמת מחיר - ${currentNegotiationData.supplier}&body=${encodeURIComponent(text)}`;
             closeNegotiationDrawer();
+        }
+
+        // --- Supplier Pricelist Modal ---
+        async function viewPricelist(supplierName) {
+            document.getElementById("pricelist-overlay").classList.add("open");
+            let modal = document.getElementById("pricelist-modal");
+            modal.style.display = "flex";
+            document.getElementById("pricelist-modal-title").innerText = `מחירון: ${supplierName}`;
+            document.getElementById("pricelist-modal-content").innerHTML = '<div style="text-align:center; padding: 40px;"><i class="fa-solid fa-spinner fa-spin fa-2x" style="color:var(--accent-primary);"></i><div style="margin-top:10px;">שולף נתונים מה-DB...</div></div>';
+
+            try {
+                let res = await fetch('/api/get-supplier-pricelist', {
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ supplier: supplierName })
+                });
+                let data = await res.json();
+                if (data.error) throw new Error(data.error);
+
+                let html = `<div style="margin-bottom:15px; font-size:14px; color:var(--text-muted);">נמצאו ${data.items.length} פריטים פעילים במחירון זה.</div>`;
+                html += `<table style="width:100%; border-collapse:collapse; text-align:right;">
+                            <thead>
+                                <tr>
+                                    <th style="padding:12px; border-bottom:2px solid var(--glass-border);">מק"ט</th>
+                                    <th style="padding:12px; border-bottom:2px solid var(--glass-border);">תיאור הפריט</th>
+                                    <th style="padding:12px; border-bottom:2px solid var(--glass-border);">מחיר</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+                
+                data.items.forEach(item => {
+                    html += `<tr style="background:rgba(0,0,0,0.1);">
+                                <td style="padding:12px; border-bottom:1px solid rgba(255,255,255,0.05); color:var(--text-muted);">${item.sku}</td>
+                                <td style="padding:12px; border-bottom:1px solid rgba(255,255,255,0.05);">${item.description}</td>
+                                <td style="padding:12px; border-bottom:1px solid rgba(255,255,255,0.05); font-weight:bold; color:var(--success);">₪${item.price.toFixed(2)}</td>
+                             </tr>`;
+                });
+                
+                html += `</tbody></table>`;
+                document.getElementById("pricelist-modal-content").innerHTML = html;
+
+            } catch(e) { 
+                document.getElementById("pricelist-modal-content").innerHTML = `<div class="bad" style="padding:20px; text-align:center;">שגיאה בטעינת המחירון: ${e.message}</div>`; 
+            }
+        }
+        
+        function closePricelistModal() {
+            document.getElementById("pricelist-overlay").classList.remove("open");
+            document.getElementById("pricelist-modal").style.display = "none";
         }
     </script>
 </body>
