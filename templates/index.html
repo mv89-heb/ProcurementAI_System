@@ -1,209 +1,398 @@
 <!DOCTYPE html>
 <html lang="he" dir="rtl">
 <head>
-<meta charset="UTF-8">
-<title>Procurement AI - Enterprise</title>
-<style>
-    body { font-family:"Inter", Arial, sans-serif; background:#0f172a; color:#f8fafc; margin:0; padding:20px; }
-    .container { max-width:1200px; margin:auto; }
-    .header { font-size:28px; font-weight:800; margin-bottom:10px; color:#38bdf8; }
-    .company-badge { display:inline-block; background:#1e293b; padding:5px 15px; border-radius:20px; font-size:14px; margin-bottom:20px; border:1px solid #334155; }
-    
-    /* Tabs System */
-    .tabs { display: flex; gap: 10px; margin-bottom: 20px; border-bottom: 2px solid #334155; padding-bottom: 10px; }
-    .tab-btn { background: transparent; color: #94a3b8; border: none; font-size: 16px; padding: 10px 20px; cursor: pointer; border-radius: 8px; transition: 0.3s; }
-    .tab-btn:hover { background: #1e293b; color: white; }
-    .tab-btn.active { background: #38bdf8; color: #0f172a; font-weight: bold; }
-    .tab-content { display: none; animation: fadeIn 0.3s ease-in-out; }
-    .tab-content.active { display: block; }
-    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מערכת רכש חכמה | AI Procurement</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-dark: #0f172a;
+            --bg-panel: rgba(30, 41, 59, 0.7);
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            --accent-primary: #3b82f6;
+            --accent-secondary: #8b5cf6;
+            --success: #10b981;
+            --danger: #ef4444;
+            --warning: #f59e0b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+        }
 
-    /* UI Elements */
-    .card { background:#1e293b; border-radius:12px; padding:20px; margin-bottom:20px; border:1px solid #334155; }
-    .title { font-size:18px; margin-bottom:15px; color:#e2e8f0; font-weight:bold; }
-    input[type="text"], input[type="file"], select { width:100%; padding:12px; border-radius:8px; border:1px solid #475569; background:#0f172a; color:white; margin-bottom:15px; box-sizing:border-box; }
-    button { background:#3b82f6; border:none; padding:12px 20px; width:100%; color:white; font-weight:bold; border-radius:8px; cursor:pointer; transition:0.3s; }
-    button:hover { background:#2563eb; }
-    table { width: 100%; border-collapse: collapse; margin-top: 15px; background: #0f172a; border-radius: 8px; overflow: hidden; }
-    th, td { border: 1px solid #334155; padding: 12px; text-align: right; }
-    th { background: #1e293b; color: #38bdf8; }
-    .best { color:#10b981; font-weight:bold; } .bad { color:#ef4444; font-weight:bold; }
-    .loader { display:none; text-align:center; color:#38bdf8; margin:10px 0; font-weight:bold; }
-    .kpis { display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:15px; margin-bottom:20px; }
-    .kpi { background:#0f172a; padding:20px; border-radius:10px; text-align:center; border:1px solid #334155; }
-    .kpi b { display:block; font-size:24px; color:#38bdf8; margin-top:10px; }
-</style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Rubik', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(59, 130, 246, 0.15), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(139, 92, 246, 0.15), transparent 25%);
+        }
+
+        /* Glassmorphism Class */
+        .glass-panel {
+            background: var(--bg-panel);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid var(--glass-border);
+            border-radius: 16px;
+            box-shadow: var(--glass-shadow);
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: 280px;
+            height: 100%;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            z-index: 10;
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 20px;
+            font-weight: 700;
+            margin-bottom: 32px;
+            color: var(--text-main);
+        }
+
+        .logo-icon {
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 28px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 14px 18px;
+            border-radius: 12px;
+            color: var(--text-muted);
+            text-decoration: none;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            cursor: pointer;
+        }
+
+        .nav-item:hover, .nav-item.active {
+            background: rgba(255, 255, 255, 0.05);
+            color: var(--text-main);
+            border-right: 4px solid var(--accent-primary);
+        }
+
+        .nav-item i {
+            font-size: 18px;
+            width: 24px;
+            text-align: center;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            padding: 24px 32px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        /* Topbar */
+        .topbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 16px 24px;
+        }
+
+        .search-bar {
+            background: rgba(0, 0, 0, 0.2);
+            border: 1px solid var(--glass-border);
+            border-radius: 24px;
+            padding: 10px 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            width: 400px;
+            color: var(--text-muted);
+        }
+        
+        .search-bar input {
+            background: none;
+            border: none;
+            color: var(--text-main);
+            outline: none;
+            width: 100%;
+        }
+
+        .user-actions {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .action-icon {
+            font-size: 20px;
+            color: var(--text-muted);
+            cursor: pointer;
+            transition: color 0.2s;
+            position: relative;
+        }
+
+        .action-icon:hover { color: var(--text-main); }
+        
+        .badge {
+            position: absolute;
+            top: -5px;
+            right: -8px;
+            background: var(--danger);
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-weight: bold;
+        }
+
+        .user-profile {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: bold;
+        }
+
+        /* Dashboard Grid */
+        .kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 24px;
+        }
+
+        .kpi-card {
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+
+        .kpi-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.45);
+        }
+
+        .kpi-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--text-muted);
+            font-size: 14px;
+        }
+
+        .kpi-icon {
+            width: 40px;
+            height: 40px;
+            border-radius: 10px;
+            background: rgba(255,255,255,0.05);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 18px;
+        }
+
+        .kpi-value {
+            font-size: 32px;
+            font-weight: 700;
+        }
+
+        .trend {
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .trend.up { color: var(--success); }
+        .trend.down { color: var(--danger); }
+
+        /* Charts Section */
+        .charts-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 24px;
+        }
+
+        .chart-container {
+            padding: 24px;
+            height: 400px;
+        }
+        
+        .section-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 20px;
+        }
+
+    </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="header">🚀 מנוע רכש AI - Enterprise</div>
-    <div class="company-badge">🏢 חברה: demo_company</div>
-
-    <div class="tabs">
-        <button class="tab-btn active" onclick="switchTab('tab-upload', this)">📥 העלאת מחירונים</button>
-        <button class="tab-btn" onclick="switchTab('tab-invoice', this)">🧾 בקרת חשבוניות</button>
-        <button class="tab-btn" onclick="switchTab('tab-compare', this)">⚖️ השוואת ספקים חכמה</button>
-    </div>
-
-    <div id="tab-upload" class="tab-content active">
-        <div class="card" style="max-width: 600px; margin: 0 auto;">
-            <div class="title">הזנת מחירון חדש (AI Processing)</div>
-            <input type="text" id="sup-name" placeholder="שם הספק (לדוגמה: אופיס דיפו)">
-            <input type="file" id="sup-file" accept=".pdf,image/*">
-            <button onclick="uploadPricelist()">עבד מחירון ושמור ב-DB</button>
-            <div id="upload-loader" class="loader">מעבד מסמך ומייצר וקטורים, אנא המתן...</div>
+    <aside class="glass-panel sidebar">
+        <div class="logo-container">
+            <i class="fa-solid fa-cube logo-icon"></i>
+            <span>ProcureAI</span>
         </div>
-    </div>
+        <a href="#" class="nav-item active"><i class="fa-solid fa-chart-line"></i> לוח בקרה ראשי</a>
+        <a href="#" class="nav-item"><i class="fa-solid fa-code-compare"></i> השוואת ספקים</a>
+        <a href="#" class="nav-item"><i class="fa-solid fa-brain"></i> AI Insights</a>
+        <a href="#" class="nav-item"><i class="fa-solid fa-box-open"></i> ניהול מוצרים</a>
+        <a href="#" class="nav-item"><i class="fa-solid fa-truck-fast"></i> ניהול ספקים</a>
+        <a href="#" class="nav-item"><i class="fa-solid fa-file-invoice"></i> דוחות וייצוא</a>
+        <a href="#" class="nav-item" style="margin-top: auto;"><i class="fa-solid fa-gear"></i> הגדרות מערכת</a>
+    </aside>
 
-    <div id="tab-invoice" class="tab-content">
-        <div class="card">
-            <div class="title">בקרת חשבונית מול מחירון מאושר</div>
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 15px;">
-                <select id="invoice-supplier" class="supplier-list"><option>טוען ספקים...</option></select>
-                <input type="file" id="invoice-file" accept=".pdf,image/*">
+    <main class="main-content">
+        <header class="glass-panel topbar">
+            <div class="search-bar">
+                <i class="fa-solid fa-search"></i>
+                <input type="text" placeholder="חפש מוצרים, ספקים או תובנות AI...">
             </div>
-            <button onclick="analyzeInvoice()">בצע בקרת מחירים</button>
-            <div id="invoice-loader" class="loader">מנתח חשבונית ומצליב מול מחירון...</div>
+            <div class="user-actions">
+                <div class="action-icon"><i class="fa-solid fa-bell"></i><span class="badge">3</span></div>
+                <div class="action-icon"><i class="fa-solid fa-robot"></i></div>
+                <div class="user-profile">MV</div>
+            </div>
+        </header>
+
+        <div class="kpi-grid">
+            <div class="glass-panel kpi-card">
+                <div class="kpi-header">
+                    <span>חיסכון פוטנציאלי</span>
+                    <div class="kpi-icon" style="color: var(--success);"><i class="fa-solid fa-piggy-bank"></i></div>
+                </div>
+                <div class="kpi-value">₪42,500</div>
+                <div class="trend up"><i class="fa-solid fa-arrow-trend-up"></i> +12% מהחודש שעבר</div>
+            </div>
             
-            <table id="invoice-table" style="display:none;">
-                <thead><tr><th>מק"ט</th><th>תיאור בחשבונית</th><th>מחיר מאושר (מחירון)</th><th>מחיר בחשבונית</th><th>סטטוס</th></tr></thead>
-                <tbody id="invoice-body"></tbody>
-            </table>
+            <div class="glass-panel kpi-card">
+                <div class="kpi-header">
+                    <span>סה"כ ספקים פעילים</span>
+                    <div class="kpi-icon" style="color: var(--accent-primary);"><i class="fa-solid fa-truck"></i></div>
+                </div>
+                <div class="kpi-value">124</div>
+                <div class="trend up"><i class="fa-solid fa-arrow-trend-up"></i> 3 ספקים חדשים</div>
+            </div>
+
+            <div class="glass-panel kpi-card">
+                <div class="kpi-header">
+                    <span>מוצרים שהושוו (החודש)</span>
+                    <div class="kpi-icon" style="color: var(--accent-secondary);"><i class="fa-solid fa-barcode"></i></div>
+                </div>
+                <div class="kpi-value">8,432</div>
+                <div class="trend up"><i class="fa-solid fa-arrow-trend-up"></i> סריקה הושלמה</div>
+            </div>
+
+            <div class="glass-panel kpi-card">
+                <div class="kpi-header">
+                    <span>חריגות מחיר שזוהו</span>
+                    <div class="kpi-icon" style="color: var(--danger);"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                </div>
+                <div class="kpi-value">12</div>
+                <div class="trend down"><i class="fa-solid fa-arrow-trend-down"></i> דורש טיפול מיידי</div>
+            </div>
         </div>
-    </div>
 
-    <div id="tab-compare" class="tab-content">
-        <div class="card">
-            <div class="title">מנוע השוואת ספקים חכמה (Vector AI)</div>
-            <select id="compare-suppliers" class="supplier-list" multiple size="5"></select>
-            <button onclick="compareSuppliers()">הרץ אלגוריתם השוואה</button>
-            <div id="compare-loader" class="loader">מחשב מרחקים וקטוריים ב-DB...</div>
+        <div class="charts-grid">
+            <div class="glass-panel chart-container">
+                <div class="section-title">מגמות מחיר והזדמנויות חיסכון (AI Forecast)</div>
+                <canvas id="trendChart"></canvas>
+            </div>
+            <div class="glass-panel chart-container">
+                <div class="section-title">התפלגות רכש לפי ספקים</div>
+                <canvas id="supplierChart"></canvas>
+            </div>
         </div>
-        <div id="dashboard-results"></div>
-    </div>
+    </main>
 
-</div>
+    <script>
+        // Chart.js Global Config for Dark Mode
+        Chart.defaults.color = '#94a3b8';
+        Chart.defaults.font.family = "'Rubik', sans-serif";
 
-<script>
-    const COMPANY_ID = "demo_company";
+        // Trend Chart (Line)
+        const ctxTrend = document.getElementById('trendChart').getContext('2d');
+        new Chart(ctxTrend, {
+            type: 'line',
+            data: {
+                labels: ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני'],
+                datasets: [{
+                    label: 'הוצאה בפועל (₪)',
+                    data: [120000, 115000, 118000, 105000, 102000, 98000],
+                    borderColor: '#3b82f6',
+                    backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.4,
+                    fill: true
+                }, {
+                    label: 'אופטימיזציית AI (₪)',
+                    data: [120000, 110000, 105000, 95000, 88000, 82000],
+                    borderColor: '#10b981',
+                    borderDash: [5, 5],
+                    borderWidth: 2,
+                    tension: 0.4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: { legend: { position: 'top', align: 'end' } },
+                scales: {
+                    y: { grid: { color: 'rgba(255,255,255,0.05)' } },
+                    x: { grid: { display: false } }
+                }
+            }
+        });
 
-    // ניהול לשוניות
-    function switchTab(tabId, btn) {
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        document.getElementById(tabId).classList.add('active');
-        btn.classList.add('active');
-    }
-
-    // טעינת ספקים לכל ה-Selects
-    async function loadSuppliers() {
-        try {
-            let res = await fetch(`/api/get-suppliers?company_id=${COMPANY_ID}`);
-            let data = await res.json();
-            let options = '<option value="">-- בחר ספק --</option>';
-            (data.suppliers || []).forEach(s => options += `<option value="${s}">${s}</option>`);
-            
-            document.querySelectorAll(".supplier-list").forEach(select => {
-                select.innerHTML = options;
-            });
-        } catch(e) { console.error("Error:", e); }
-    }
-
-    // הפעלת העלאה
-    async function uploadPricelist() {
-        let name = document.getElementById("sup-name").value;
-        let file = document.getElementById("sup-file").files[0];
-        if(!name || !file) return alert("הזן שם ספק וקובץ");
-
-        document.getElementById("upload-loader").style.display = "block";
-        let fd = new FormData();
-        fd.append("company_id", COMPANY_ID);
-        fd.append("supplier_name", name);
-        fd.append("file", file);
-
-        try {
-            let res = await fetch('/api/upload-pricelist', { method: 'POST', body: fd });
-            let data = await res.json();
-            document.getElementById("upload-loader").style.display = "none";
-            alert(data.message || data.error);
-            loadSuppliers(); 
-        } catch(e) { alert("שגיאה בהעלאה"); }
-    }
-
-    // הפעלת בקרת חשבונית
-    async function analyzeInvoice() {
-        let sup = document.getElementById("invoice-supplier").value;
-        let file = document.getElementById("invoice-file").files[0];
-        if(!sup || !file) return alert("בחר ספק והעלה חשבונית");
-
-        document.getElementById("invoice-loader").style.display = "block";
-        document.getElementById("invoice-table").style.display = "none";
-        
-        let fd = new FormData();
-        fd.append("company_id", COMPANY_ID);
-        fd.append("supplier_name", sup);
-        fd.append("invoice", file);
-
-        try {
-            let res = await fetch('/api/analyze-prices', { method: 'POST', body: fd });
-            let data = await res.json();
-            document.getElementById("invoice-loader").style.display = "none";
-            
-            if(data.error) return alert("שגיאה: " + data.error);
-            
-            let tbody = document.getElementById("invoice-body");
-            tbody.innerHTML = "";
-            data.results.forEach(r => {
-                let statusClass = r.is_match ? 'best' : 'bad';
-                tbody.innerHTML += `<tr>
-                    <td>${r.sku}</td>
-                    <td>${r.description}</td>
-                    <td>${r.approved_price} ₪</td>
-                    <td>${r.invoice_price} ₪</td>
-                    <td class="${statusClass}">${r.status}</td>
-                </tr>`;
-            });
-            document.getElementById("invoice-table").style.display = "table";
-        } catch(e) { alert("שגיאה בחישוב"); }
-    }
-
-    // הפעלת השוואת ספקים
-    async function compareSuppliers() {
-        let sel = document.getElementById("compare-suppliers");
-        let selected = Array.from(sel.selectedOptions).map(o => o.value);
-        if(selected.length < 2) return alert("בחר לפחות 2 ספקים להשוואה");
-
-        document.getElementById("compare-loader").style.display = "block";
-        document.getElementById("dashboard-results").innerHTML = "";
-
-        try {
-            let res = await fetch('/api/compare-suppliers', {
-                method: "POST",
-                headers: {"Content-Type": "application/json"},
-                body: JSON.stringify({ company_id: COMPANY_ID, suppliers: selected })
-            });
-            let data = await res.json();
-            document.getElementById("compare-loader").style.display = "none";
-            if(data.error) return alert(data.error);
-            
-            let html = `<div class="kpis"><div class="kpi">מוצרים מוצלבים<b>${data.results.length}</b></div><div class="kpi">ספקים<b>${data.ranking.length}</b></div></div>`;
-            html += `<div class="card"><div class="title">📊 תובנות (Insights)</div>`;
-            data.insights.forEach(i => html += `<div>${i}</div>`);
-            html += `</div>`;
-            
-            data.results.forEach(r => {
-                html += `<div class="card" style="padding:15px; margin-bottom:15px;">
-                    <div class="title" style="margin-bottom:5px;">📦 ${r.product}</div>
-                    <div style="font-size:14px; margin-bottom:10px;">⭐ המלצה: <span class="best">${r.best_supplier} (${r.best_price} ₪)</span></div>
-                    ${r.offers.map(o => `<div class="${o.difference === 0 ? 'best' : 'bad'}" style="font-size:13px;">🛒 ${o.supplier} ➜ ${o.price} ₪ ${o.difference > 0 ? `(+${o.difference})` : ''}</div>`).join("")}
-                </div>`;
-            });
-            document.getElementById("dashboard-results").innerHTML = html;
-        } catch(e) { alert("שגיאה בחישוב"); }
-    }
-
-    loadSuppliers();
-</script>
+        // Supplier Chart (Doughnut)
+        const ctxSupplier = document.getElementById('supplierChart').getContext('2d');
+        new Chart(ctxSupplier, {
+            type: 'doughnut',
+            data: {
+                labels: ['ספק א׳', 'ספק ב׳', 'ספק ג׳', 'אחרים'],
+                datasets: [{
+                    data: [45, 25, 20, 10],
+                    backgroundColor: ['#3b82f6', '#8b5cf6', '#10b981', '#334155'],
+                    borderWidth: 0,
+                    hoverOffset: 4
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '70%',
+                plugins: {
+                    legend: { position: 'bottom' }
+                }
+            }
+        });
+    </script>
 </body>
 </html>
