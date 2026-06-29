@@ -8,10 +8,41 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <style>
-        :root { --bg-dark: #0f172a; --bg-panel: rgba(30, 41, 59, 0.75); --glass-border: rgba(255, 255, 255, 0.08); --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4); --accent-primary: #3b82f6; --accent-secondary: #8b5cf6; --success: #10b981; --danger: #ef4444; --warning: #f59e0b; --text-main: #f8fafc; --text-muted: #94a3b8; }
+        :root {
+            --bg-dark: #0f172a; 
+            --bg-panel: rgba(30, 41, 59, 0.75);
+            --glass-border: rgba(255, 255, 255, 0.08); 
+            --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+            --accent-primary: #3b82f6; 
+            --accent-secondary: #8b5cf6;
+            --success: #10b981; 
+            --danger: #ef4444; 
+            --warning: #f59e0b;
+            --text-main: #f8fafc; 
+            --text-muted: #94a3b8;
+        }
+        
         * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Rubik', sans-serif; }
-        body { background-color: var(--bg-dark); color: var(--text-main); display: flex; height: 100vh; overflow: hidden; background-image: radial-gradient(circle at 15% 50%, rgba(59,130,246,0.12), transparent 25%), radial-gradient(circle at 85% 30%, rgba(139,92,246,0.12), transparent 25%); }
-        .glass-panel { background: var(--bg-panel); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid var(--glass-border); border-radius: 16px; box-shadow: var(--glass-shadow); }
+        
+        body {
+            background-color: var(--bg-dark); 
+            color: var(--text-main);
+            display: flex; 
+            height: 100vh; 
+            overflow: hidden;
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(59,130,246,0.12), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(139,92,246,0.12), transparent 25%);
+        }
+        
+        .glass-panel {
+            background: var(--bg-panel); 
+            backdrop-filter: blur(14px); 
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid var(--glass-border); 
+            border-radius: 16px; 
+            box-shadow: var(--glass-shadow);
+        }
         
         /* Sidebar */
         .sidebar { width: 280px; height: 100%; padding: 24px; display: flex; flex-direction: column; gap: 12px; z-index: 10; }
@@ -141,9 +172,7 @@
                     <canvas id="trendChart"></canvas>
                 </div>
                 <div class="glass-panel chart-container">
-                    <div class="section-title">
-                        כמות פריטים לפי ספק (נתוני אמת)
-                    </div>
+                    <div class="section-title">כמות פריטים לפי ספק (נתוני אמת)</div>
                     <canvas id="supplierChart"></canvas>
                 </div>
             </div>
@@ -244,7 +273,7 @@
                 
                 data.suppliers.forEach(s => {
                     selectHtml += `<option value="${s}">${s}</option>`;
-                    let score = Math.floor(Math.random() * 20) + 80; // ציון פיקטיבי להדגמת UI
+                    let score = Math.floor(Math.random() * 20) + 80;
                     tableHtml += `<tr>
                         <td style="font-weight:500;">${s}</td>
                         <td><span class="status-badge status-active">פעיל במערכת</span></td>
@@ -259,16 +288,14 @@
             } catch (e) { console.error("Error loading suppliers from database API"); }
         }
 
-        // --- Load Dashboard Real Stats ---
+        // --- Load Real Dashboard Stats ---
         async function loadDashboardStats() {
             try {
                 let res = await fetch('/api/get-dashboard-stats');
                 let data = await res.json();
                 
-                // עדכון סך כל הפריטים האמיתי ב-DB
                 document.getElementById('kpi-items-count').innerText = data.total_items.toLocaleString();
                 
-                // ציור גרף עוגה מנתוני אמת
                 const labels = data.distribution.map(d => d.supplier);
                 const counts = data.distribution.map(d => d.count);
                 
@@ -288,7 +315,6 @@
                     options: { responsive: true, maintainAspectRatio: false, cutout: '70%' }
                 });
 
-                // ציור גרף מגמות פיקטיבי (עד לחיבור נתוני ERP)
                 new Chart(document.getElementById('trendChart').getContext('2d'), {
                     type: 'line', 
                     data: { 
@@ -303,7 +329,6 @@
             } catch (e) { console.error("Error loading dashboard stats", e); }
         }
 
-        // On window load
         window.onload = () => { 
             loadSuppliers(); 
             loadDashboardStats(); 
