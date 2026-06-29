@@ -9,7 +9,7 @@ from ai_engine import AIEngine
 if sys.stdout.encoding != 'utf-8':
     sys.stdout.reconfigure(encoding='utf-8')
 
-app = Flask(__name__, template_folder='.')
+app = Flask(__name__)
 
 # הגדרות סביבה - נלקחות אוטומטית מ-Render או מההגדרות המקומיות שלך
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://neondb_owner:הסיסמה_שלך@ep-xxx-xxx.eu-central-1.aws.neon.tech/neondb?sslmode=require")
