@@ -5,11 +5,11 @@ from flask import Flask, request, jsonify, render_template
 import psycopg2
 from ai_engine import AIEngine
 
-# הגדרת קידוד לפלט הטרמינל
+# הגדרת קידוד לפלט הטרמינל (למניעת שגיאות ב-Windows/Linux)
 if sys.stdout.encoding != 'utf-8':
     sys.stdout.reconfigure(encoding='utf-8')
 
-# אתחול השרת - ברירת המחדל תחפש קבצי HTML בתיקיית templates/
+# אתחול השרת - קורא אוטומטית מקבצים בתיקיית templates/
 app = Flask(__name__)
 
 # הגדרות סביבה - נלקחות אוטומטית מ-Render
@@ -27,39 +27,6 @@ def get_db_connection():
 def index():
     """הצגת ממשק המערכת"""
     return render_template('index.html')
-
-@app.route('/api/get-dashboard-stats', methods=['GET'])
-def get_dashboard_stats():
-    """שליפת נתוני אמת סטטיסטיים מלוח המחירונים"""
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor()
-        
-        # ספירת סך כל הפריטים הייחודיים במערכת (מק"טים)
-        cur.execute("SELECT COUNT(*) FROM pricelist_items WHERE company_id = %s", (COMPANY_ID,))
-        total_items = cur.fetchone()[0]
-        
-        # התפלגות כמות הפריטים לכל ספק (לצורך גרף עוגה אמיתי)
-        cur.execute("""
-            SELECT supplier_name, COUNT(*) 
-            FROM pricelist_items 
-            WHERE company_id = %s 
-            GROUP BY supplier_name 
-            ORDER BY COUNT(*) DESC LIMIT 5
-        """, (COMPANY_ID,))
-        
-        distribution = [{"supplier": row[0], "count": row[1]} for row in cur.fetchall()]
-        
-        cur.close()
-        conn.close()
-        
-        return jsonify({
-            "total_items": total_items,
-            "distribution": distribution
-        })
-    except Exception as e:
-        print("Dashboard Stats Error:", e)
-        return jsonify({"error": "שגיאה בשליפת נתוני לוח בקרה"}), 500
 
 @app.route('/api/get-suppliers', methods=['GET'])
 def get_suppliers():
@@ -181,6 +148,37 @@ def generate_negotiation():
     except Exception as e:
         print(f"Negotiation AI Error: {e}")
         return jsonify({"error": "מנוע ה-AI לא זמין כרגע", "success": False}), 500
+
+@app.route('/api/get-dashboard-stats', methods=['GET'])
+def get_dashboard_stats():
+    """שליפת נתוני אמת סטטיסטיים מלוח המחירונים עבור ה-Dashboard"""
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+        
+        cur.execute("SELECT COUNT(*) FROM pricelist_items WHERE company_id = %s", (COMPANY_ID,))
+        total_items = cur.fetchone()[0]
+        
+        cur.execute("""
+            SELECT supplier_name, COUNT(*) 
+            FROM pricelist_items 
+            WHERE company_id = %s 
+            GROUP BY supplier_name 
+            ORDER BY COUNT(*) DESC LIMIT 5
+        """, (COMPANY_ID,))
+        
+        distribution = [{"supplier": row[0], "count": row[1]} for row in cur.fetchall()]
+        
+        cur.close()
+        conn.close()
+        
+        return jsonify({
+            "total_items": total_items,
+            "distribution": distribution
+        })
+    except Exception as e:
+        print("Dashboard Stats Error:", e)
+        return jsonify({"error": "שגיאה בשליפת נתוני לוח בקרה"}), 500
 
 if __name__ == '__main__':
     app.run(debug=True, host='0.0.0.0', port=5000)
