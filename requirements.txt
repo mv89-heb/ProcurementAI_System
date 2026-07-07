@@ -1,0 +1,10 @@
+flask
+gunicorn
+psycopg2-binary
+pgvector
+pillow
+pymupdf
+google-genai
+pandas
+openpyxl
+xlrd>=2.0.1

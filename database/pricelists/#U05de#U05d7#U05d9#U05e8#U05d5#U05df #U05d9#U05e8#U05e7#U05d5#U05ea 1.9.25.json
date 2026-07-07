@@ -1,0 +1,262 @@
+{
+    "VEG001": {
+        "description": "עגבניה",
+        "price": 3.7
+    },
+    "VEG002": {
+        "description": "מלפפון",
+        "price": 3.7
+    },
+    "VEG003": {
+        "description": "פלפל ירוק",
+        "price": 4.1
+    },
+    "VEG004": {
+        "description": "פלפל בהיר",
+        "price": 5.4
+    },
+    "VEG005": {
+        "description": "פלפל אדום",
+        "price": 4.3
+    },
+    "VEG006": {
+        "description": "פלפל צהוב",
+        "price": 5.4
+    },
+    "VEG007": {
+        "description": "פלפל כתום",
+        "price": 5.4
+    },
+    "VEG008": {
+        "description": "פלפל חריף",
+        "price": 7.2
+    },
+    "VEG009": {
+        "description": "קישוא",
+        "price": 3.7
+    },
+    "VEG010": {
+        "description": "חציל",
+        "price": 3.6
+    },
+    "VEG011": {
+        "description": "גזר ארוז",
+        "price": 2.8
+    },
+    "VEG012": {
+        "description": "גזר תפזורת",
+        "price": 2.0
+    },
+    "VEG013": {
+        "description": "סלק",
+        "price": 2.5
+    },
+    "VEG014": {
+        "description": "קולרבי",
+        "price": 6.0
+    },
+    "VEG015": {
+        "description": "בטטה",
+        "price": 3.7
+    },
+    "VEG016": {
+        "description": "דלורית",
+        "price": 3.7
+    },
+    "VEG017": {
+        "description": "דלעת",
+        "price": 3.4
+    },
+    "VEG018": {
+        "description": "שרי (יח')",
+        "price": 6.5
+    },
+    "VEG019": {
+        "description": "בצל",
+        "price": 1.7
+    },
+    "VEG020": {
+        "description": "בצל אדום",
+        "price": 3.4
+    },
+    "VEG021": {
+        "description": "שום רביעיה",
+        "price": 2.7
+    },
+    "VEG022": {
+        "description": "תפו\"א לבן",
+        "price": 2.3
+    },
+    "VEG023": {
+        "description": "תפו\"א אדום",
+        "price": 2.3
+    },
+    "VEG024": {
+        "description": "מלון",
+        "price": 3.7
+    },
+    "VEG025": {
+        "description": "אבטיח",
+        "price": 2.9
+    },
+    "VEG026": {
+        "description": "תפו\"ע סמיט 6.5",
+        "price": 7.8
+    },
+    "VEG027": {
+        "description": "תפו\"ע זהוב 6.5",
+        "price": 7.8
+    },
+    "VEG028": {
+        "description": "תפו\"ע חרמון 6.5",
+        "price": 7.8
+    },
+    "VEG029": {
+        "description": "אגס",
+        "price": 8.9
+    },
+    "VEG030": {
+        "description": "אפרסק 55",
+        "price": 7.0
+    },
+    "VEG031": {
+        "description": "נקטרינה 55",
+        "price": 7.5
+    },
+    "VEG032": {
+        "description": "בננה",
+        "price": 8.0
+    },
+    "VEG033": {
+        "description": "ענב לבן",
+        "price": 12.5
+    },
+    "VEG034": {
+        "description": "לימון",
+        "price": 7.5
+    },
+    "VEG035": {
+        "description": "מנגו",
+        "price": 7.0
+    },
+    "VEG036": {
+        "description": "רימון",
+        "price": 5.5
+    },
+    "VEG037": {
+        "description": "סלק וואקום 2.5 ק\"ג",
+        "price": 18.8
+    },
+    "VEG038": {
+        "description": "סלק בוואקום יח'",
+        "price": 4.0
+    },
+    "VEG039": {
+        "description": "סלק וואקום 500 גרם",
+        "price": 4.0
+    },
+    "LEAF001": {
+        "description": "חסה בד\"ץ",
+        "price": 6.2
+    },
+    "LEAF002": {
+        "description": "פטרוזיליה",
+        "price": 4.9
+    },
+    "LEAF003": {
+        "description": "כוסברה בד\"ץ",
+        "price": 4.9
+    },
+    "LEAF004": {
+        "description": "שמיר בד\"ץ",
+        "price": 4.9
+    },
+    "LEAF005": {
+        "description": "סלרי בד\"ץ",
+        "price": 6.2
+    },
+    "LEAF006": {
+        "description": "בצל ירוק בדץ",
+        "price": 6.2
+    },
+    "LEAF007": {
+        "description": "כרוב לבן שלם בדץ",
+        "price": 14.5
+    },
+    "LEAF008": {
+        "description": "כרוב אדום שלם בדץ",
+        "price": 14.8
+    },
+    "LEAF009": {
+        "description": "כרוב לבן קצוץ בדץ-1 ק\"ג",
+        "price": 7.4
+    },
+    "LEAF010": {
+        "description": "כרוב אדום קצוץ בדץ-1 ק\"ג",
+        "price": 9.1
+    },
+    "LEAF011": {
+        "description": "חסה אייסברג 1 ק\"ג בדץ",
+        "price": 14.7
+    },
+    "PEEL001": {
+        "description": "תפו\"א קלוף צ'יפס",
+        "price": 3.0
+    },
+    "PEEL002": {
+        "description": "תפו\"א קלוף קוביה",
+        "price": 3.0
+    },
+    "PEEL003": {
+        "description": "תפו\"א קלוף שלם",
+        "price": 3.0
+    },
+    "PEEL004": {
+        "description": "תפו\"א קלוף קטן",
+        "price": 3.0
+    },
+    "PEEL005": {
+        "description": "תפו\"א קלוף סירות",
+        "price": 3.0
+    },
+    "PEEL006": {
+        "description": "תפו\"א קלוף גולש",
+        "price": 3.0
+    },
+    "PEEL007": {
+        "description": "גזר קלוף שלם",
+        "price": 4.7
+    },
+    "PEEL008": {
+        "description": "בצל קלוף שלם",
+        "price": 4.1
+    },
+    "PEEL009": {
+        "description": "בטטה קלופה",
+        "price": 6.2
+    },
+    "PEEL010": {
+        "description": "שום קלוף 1 ק\"ג",
+        "price": 16.5
+    },
+    "FURN001": {
+        "description": "שולחן מתקפל",
+        "price": 92.0
+    },
+    "FURN002": {
+        "description": "כיסא פלסטיק",
+        "price": 17.0
+    },
+    "OIL001": {
+        "description": "שמן קנולה 1 ליטר",
+        "price": 5.8
+    },
+    "OIL002": {
+        "description": "שמן קנולה 5 ליטר",
+        "price": 29.0
+    },
+    "SUGAR001": {
+        "description": "סוכר לבן 1 ק\"ג",
+        "price": 3.6
+    }
+}

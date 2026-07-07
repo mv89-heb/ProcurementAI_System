@@ -1,0 +1,873 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>מערכת רכש חכמה | AI Procurement Enterprise</title>
+    <link href="https://fonts.googleapis.com/css2?family=Rubik:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-dark: #0f172a; 
+            --bg-panel: rgba(30, 41, 59, 0.75);
+            --glass-border: rgba(255, 255, 255, 0.08); 
+            --glass-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.4);
+            --accent-primary: #3b82f6; 
+            --accent-secondary: #8b5cf6;
+            --success: #10b981; 
+            --danger: #ef4444; 
+            --warning: #f59e0b;
+            --text-main: #f8fafc; 
+            --text-muted: #94a3b8;
+        }
+        
+        * { margin: 0; padding: 0; box-sizing: border-box; font-family: 'Rubik', sans-serif; }
+        
+        body {
+            background-color: var(--bg-dark); 
+            color: var(--text-main);
+            display: flex; 
+            height: 100vh; 
+            overflow: hidden;
+            background-image: 
+                radial-gradient(circle at 15% 50%, rgba(59,130,246,0.12), transparent 25%),
+                radial-gradient(circle at 85% 30%, rgba(139,92,246,0.12), transparent 25%);
+        }
+        
+        .glass-panel {
+            background: var(--bg-panel); 
+            backdrop-filter: blur(14px); 
+            -webkit-backdrop-filter: blur(14px);
+            border: 1px solid var(--glass-border); 
+            border-radius: 16px; 
+            box-shadow: var(--glass-shadow);
+        }
+        
+        /* Sidebar */
+        .sidebar { width: 280px; height: 100%; padding: 24px; display: flex; flex-direction: column; gap: 12px; z-index: 10; }
+        .logo-container { display: flex; align-items: center; gap: 12px; font-size: 20px; font-weight: 700; margin-bottom: 32px; }
+        .logo-icon { background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; font-size: 28px; }
+        .nav-item { display: flex; align-items: center; gap: 16px; padding: 14px 18px; border-radius: 12px; color: var(--text-muted); text-decoration: none; font-weight: 500; transition: all 0.3s ease; cursor: pointer; }
+        .nav-item:hover, .nav-item.active { background: rgba(255,255,255,0.05); color: var(--text-main); border-right: 4px solid var(--accent-primary); }
+        .nav-item i { font-size: 18px; width: 24px; text-align: center; }
+        
+        /* Main Workspace */
+        .main-content { flex: 1; padding: 24px 32px; overflow-y: auto; display: flex; flex-direction: column; gap: 24px; }
+        .topbar { display: flex; justify-content: space-between; align-items: center; padding: 16px 24px; margin-bottom: 10px; }
+        .search-bar { background: rgba(0,0,0,0.2); border: 1px solid var(--glass-border); border-radius: 24px; padding: 10px 20px; display: flex; align-items: center; gap: 12px; width: 400px; color: var(--text-muted); }
+        .search-bar input { background: none; border: none; color: var(--text-main); outline: none; width: 100%; }
+        .user-profile { width: 40px; height: 40px; border-radius: 50%; background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)); display: flex; align-items: center; justify-content: center; font-weight: bold; }
+        
+        /* SPA Views */
+        .view-section { display: none; animation: fadeIn 0.4s ease; flex-direction: column; gap: 24px; }
+        .view-section.active { display: flex; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+        /* Dashboard & KPIs */
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 24px; }
+        .kpi-card { padding: 24px; display: flex; flex-direction: column; gap: 12px; transition: transform 0.3s; }
+        .kpi-card:hover { transform: translateY(-5px); }
+        .kpi-header { display: flex; justify-content: space-between; align-items: center; color: var(--text-muted); font-size: 14px; }
+        .kpi-icon { width: 40px; height: 40px; border-radius: 10px; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: center; font-size: 18px; }
+        .kpi-value { font-size: 32px; font-weight: 700; }
+        .charts-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 24px; }
+        .chart-container { padding: 24px; height: 350px; }
+        
+        /* Common Elements */
+        .section-title { font-size: 18px; font-weight: 600; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; }
+        .btn { padding: 12px 24px; border-radius: 8px; border: none; font-weight: 600; cursor: pointer; display: flex; align-items: center; gap: 8px; justify-content: center; transition: all 0.2s; }
+        .btn-primary { background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary)); color: white; }
+        .btn-primary:hover { box-shadow: 0 4px 15px rgba(59,130,246,0.4); }
+        .btn-secondary { background: rgba(255,255,255,0.08); color: var(--text-main); }
+        .btn-secondary:hover { background: rgba(255,255,255,0.15); }
+        
+        /* Compare Section */
+        .compare-section select { background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); color: var(--text-main); padding: 12px; border-radius: 8px; width: 100%; height: 140px; outline: none; font-size: 14px; }
+        .compare-section select option { background: var(--bg-dark); color: white; padding: 6px; border-radius: 4px; }
+        .result-card { background: rgba(255, 255, 255, 0.02); border: 1px solid var(--glass-border); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+        .best { color: var(--success); font-weight: bold; } 
+        .bad { color: var(--danger); font-weight: bold; }
+
+        /* Suppliers Table */
+        .table-container { width: 100%; overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; text-align: right; }
+        th, td { padding: 16px; border-bottom: 1px solid var(--glass-border); }
+        th { color: var(--text-muted); font-weight: 500; font-size: 14px; }
+        tr:hover { background: rgba(255,255,255,0.02); }
+        .status-badge { padding: 4px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+        .status-active { background: rgba(16, 185, 129, 0.15); color: var(--success); }
+
+        /* Drawers & Modals */
+        .drawer-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); z-index: 99; opacity: 0; visibility: hidden; transition: all 0.3s ease; }
+        .drawer-overlay.open { opacity: 1; visibility: visible; }
+        
+        .drawer { position: fixed; top: 0; left: -500px; width: 460px; height: 100%; background: rgba(15,23,42,0.95); border-right: 1px solid var(--glass-border); z-index: 100; transition: left 0.4s cubic-bezier(0.25, 0.8, 0.25, 1); display: flex; flex-direction: column; }
+        .drawer.open { left: 0; } 
+        
+        .drawer-header { display: flex; justify-content: space-between; align-items: center; padding: 24px; border-bottom: 1px solid var(--glass-border); }
+        .drawer-title { font-size: 20px; font-weight: 600; display: flex; gap: 12px; align-items: center; }
+        .close-btn { background: none; border: none; color: var(--text-muted); font-size: 22px; cursor: pointer; }
+        .drawer-content { padding: 24px; overflow-y: auto; display: flex; flex-direction: column; gap: 24px; }
+        
+        .context-row { display: flex; justify-content: space-between; margin-bottom: 10px; font-size: 14px; border-bottom: 1px solid rgba(255,255,255,0.05); padding-bottom: 8px; }
+        
+        /* Loading Skeleton */
+        .skeleton-text { height: 16px; border-radius: 4px; background: linear-gradient(90deg, rgba(255,255,255,0.05) 25%, rgba(255,255,255,0.1) 50%, rgba(255,255,255,0.05) 75%); background-size: 200% 100%; animation: loading 1.5s infinite; margin-bottom: 12px; }
+        @keyframes loading { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+        
+        .glass-textarea { width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--glass-border); border-radius: 12px; padding: 16px; color: var(--text-main); font-size: 14px; resize: vertical; line-height: 1.6; outline: none; }
+    </style>
+</head>
+<body>
+
+    <aside class="glass-panel sidebar">
+        <div class="logo-container">
+            <i class="fa-solid fa-cube logo-icon"></i><span>ProcureAI</span>
+        </div>
+        <a class="nav-item active" onclick="switchView('dashboard', this)"><i class="fa-solid fa-chart-line"></i> לוח בקרה ראשי</a>
+        <a class="nav-item" onclick="switchView('compare', this)"><i class="fa-solid fa-code-compare"></i> השוואת ספקים חכמה</a>
+        <a class="nav-item" onclick="switchView('suppliers', this)"><i class="fa-solid fa-truck-fast"></i> ניהול ספקים</a>
+        <a class="nav-item" onclick="switchView('upload', this)"><i class="fa-solid fa-file-arrow-up"></i> העלאת מסמכים סרוקים</a>
+        <a class="nav-item" onclick="switchView('matching', this)"><i class="fa-solid fa-scale-balanced"></i> הצלבת חשבוניות</a>
+    </aside>
+
+    <main class="main-content">
+        <header class="glass-panel topbar">
+            <div class="search-bar"><i class="fa-solid fa-search"></i><input type="text" placeholder="חפש פריטים או תובנות ברשת..."></div>
+            <div class="user-actions"><div class="user-profile">MV</div></div>
+        </header>
+
+        <div id="view-dashboard" class="view-section active">
+            <div class="kpi-grid">
+                <div class="glass-panel kpi-card">
+                    <div class="kpi-header">
+                        <span title="נתון אמת: סך כל הספקים הייחודיים שנטענו לבסיס הנתונים (DB)">סה"כ ספקים פעילים <i class="fa-solid fa-circle-info" style="font-size:12px; opacity:0.6;"></i></span>
+                        <div class="kpi-icon" style="color: var(--accent-primary);"><i class="fa-solid fa-truck"></i></div>
+                    </div>
+                    <div class="kpi-value" id="kpi-suppliers-count"><i class="fa-solid fa-spinner fa-spin" style="font-size:16px;"></i></div>
+                </div>
+                
+                <div class="glass-panel kpi-card">
+                    <div class="kpi-header">
+                        <span title="נתון אמת: סך כל שורות המוצרים והמחירונים שקיימות במערכת">סה"כ פריטים ומק"טים <i class="fa-solid fa-circle-info" style="font-size:12px; opacity:0.6;"></i></span>
+                        <div class="kpi-icon" style="color: var(--success);"><i class="fa-solid fa-boxes-stacked"></i></div>
+                    </div>
+                    <div class="kpi-value" id="kpi-items-count"><i class="fa-solid fa-spinner fa-spin" style="font-size:16px;"></i></div>
+                </div>
+                
+                <div class="glass-panel kpi-card" style="opacity: 0.6;">
+                    <div class="kpi-header">
+                        <span title="נתון עתידי: יופעל לאחר חיבור מערכת החשבוניות / ERP">הזדמנויות חיסכון (ממתין לנתונים) <i class="fa-solid fa-circle-info" style="font-size:12px; opacity:0.6;"></i></span>
+                        <div class="kpi-icon" style="color: var(--warning);"><i class="fa-solid fa-piggy-bank"></i></div>
+                    </div>
+                    <div class="kpi-value">-</div>
+                </div>
+            </div>
+            
+            <div class="charts-grid">
+                <div class="glass-panel chart-container">
+                    <div class="section-title">
+                        מגמות מחיר (נתוני המחשה בלבד)
+                        <span title="גרף זה נועד להמחשה עד שיוזנו נתוני רכש היסטוריים למערכת" style="cursor:help; font-size:14px; color:var(--text-muted);"><i class="fa-solid fa-circle-info"></i></span>
+                    </div>
+                    <canvas id="trendChart"></canvas>
+                </div>
+                <div class="glass-panel chart-container">
+                    <div class="section-title">כמות פריטים לפי ספק (נתוני אמת)</div>
+                    <canvas id="supplierChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div id="view-compare" class="view-section">
+            <div class="glass-panel compare-section" style="padding: 24px;">
+                <div class="section-title"><i class="fa-solid fa-filter" style="color:var(--accent-primary);"></i> סינון והצלבת ספקים מה-DB (לחץ Ctrl לבחירה מרובה)</div>
+                <div style="display: flex; flex-direction: column; gap: 15px;">
+                    <select id="suppliers-select" multiple></select>
+                    <button class="btn btn-primary" style="align-self: flex-start;" onclick="runComparison()"><i class="fa-solid fa-layer-group"></i> בצע הצלבה והשוואת מחירים</button>
+                </div>
+            </div>
+            <div id="results-container"></div>
+        </div>
+
+        <div id="view-suppliers" class="view-section">
+            <div class="glass-panel" style="padding: 24px;">
+                <div class="section-title" style="justify-content: space-between; display: flex; width: 100%;">
+                    <span><i class="fa-solid fa-address-book" style="color:var(--accent-primary);"></i> ספקים - קטלוג ופרטי קשר</span>
+                </div>
+                <p style="color: var(--text-muted); font-size: 13px; margin-bottom: 12px;">
+                    הטבלה מציגה את הספקים המסודרים במערכת: הקטלוג (מוצרים ומחירים) ופרטי הקשר (טלפון/איש קשר)
+                    מגיעים משתי טבלאות נפרדות ב-DB, ומוצגים כאן יחד לנוחות.
+                </p>
+                <div class="table-container">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>שם הספק</th>
+                                <th>קטגוריה</th>
+                                <th>טלפון</th>
+                                <th>איש קשר</th>
+                                <th>פריטים בקטלוג</th>
+                                <th>פעולות</th>
+                            </tr>
+                        </thead>
+                        <tbody id="supplier-directory-body">
+                            </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        <div id="view-upload" class="view-section">
+            <div class="glass-panel" style="padding: 24px;">
+                <div class="section-title"><i class="fa-solid fa-file-arrow-up" style="color:var(--accent-primary);"></i> העלאת מחירון סרוק (PDF/JPG/PNG)</div>
+                <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 16px;">
+                    ניתן לגרור קובץ סרוק (מ-NAPS2 או כל מקור אחר) או ללחוץ לבחירה. שם הספק ינוחש אוטומטית משם הקובץ (למשל <code>אחוואה_מחירון.pdf</code>), או שאפשר לרשום אותו ידנית.
+                </p>
+
+                <div style="display:flex; gap: 12px; margin-bottom: 16px; align-items:center;">
+                    <input type="text" id="upload-supplier-name" placeholder="שם ספק (אופציונלי - ינוחש אוטומטית אם ריק)"
+                        style="flex:1; padding: 12px 16px; border-radius: 10px; border: 1px solid var(--glass-border); background: rgba(0,0,0,0.2); color: var(--text-main);">
+                </div>
+
+                <div id="drop-zone" style="border: 2px dashed var(--glass-border); border-radius: 14px; padding: 40px; text-align:center; cursor:pointer; transition: all 0.2s ease;">
+                    <i class="fa-solid fa-cloud-arrow-up" style="font-size: 36px; color: var(--accent-primary); margin-bottom: 12px;"></i>
+                    <div style="font-weight:500;">גרור קובץ לכאן, או לחץ לבחירה</div>
+                    <div style="color: var(--text-muted); font-size: 13px; margin-top:6px;">PDF, JPG, PNG</div>
+                    <input type="file" id="file-input" accept=".pdf,.jpg,.jpeg,.png" style="display:none;">
+                </div>
+
+                <div id="upload-status" style="margin-top: 20px;"></div>
+            </div>
+        </div>
+        <div id="view-matching" class="view-section">
+            <div class="glass-panel" style="padding: 24px;">
+                <div class="section-title"><i class="fa-solid fa-scale-balanced" style="color:var(--accent-primary);"></i> הצלבת חשבונית מול תעודת משלוח</div>
+                <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">
+                    העלה חשבונית ותעודת משלוח (או בחר מסמכים שכבר הועלו), והמערכת תשווה כמויות בין המסמכים ותבדוק פערי מחיר מול המחירון של הספק.
+                </p>
+
+                <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px;">
+                    <div>
+                        <div style="font-weight:500; margin-bottom:10px;"><i class="fa-solid fa-file-invoice" style="color:var(--accent-secondary);"></i> העלאת חשבונית חדשה</div>
+                        <div class="doc-drop-zone" id="drop-invoice" data-doctype="invoice" style="border: 2px dashed var(--glass-border); border-radius: 14px; padding: 28px; text-align:center; cursor:pointer;">
+                            <i class="fa-solid fa-file-invoice-dollar" style="font-size: 28px; color: var(--accent-secondary); margin-bottom: 8px;"></i>
+                            <div style="font-size:14px;">גרור חשבונית סרוקה, או לחץ לבחירה</div>
+                            <input type="file" class="doc-file-input" data-doctype="invoice" accept=".pdf,.jpg,.jpeg,.png" style="display:none;">
+                        </div>
+                        <div id="status-invoice" style="margin-top:10px; font-size:13px;"></div>
+                    </div>
+                    <div>
+                        <div style="font-weight:500; margin-bottom:10px;"><i class="fa-solid fa-truck-ramp-box" style="color:var(--accent-primary);"></i> העלאת תעודת משלוח חדשה</div>
+                        <div class="doc-drop-zone" id="drop-delivery_note" data-doctype="delivery_note" style="border: 2px dashed var(--glass-border); border-radius: 14px; padding: 28px; text-align:center; cursor:pointer;">
+                            <i class="fa-solid fa-truck-ramp-box" style="font-size: 28px; color: var(--accent-primary); margin-bottom: 8px;"></i>
+                            <div style="font-size:14px;">גרור תעודת משלוח סרוקה, או לחץ לבחירה</div>
+                            <input type="file" class="doc-file-input" data-doctype="delivery_note" accept=".pdf,.jpg,.jpeg,.png" style="display:none;">
+                        </div>
+                        <div id="status-delivery_note" style="margin-top:10px; font-size:13px;"></div>
+                    </div>
+                </div>
+
+                <div style="display:flex; gap:12px; align-items:flex-end; flex-wrap:wrap; border-top: 1px solid var(--glass-border); padding-top:20px;">
+                    <div style="flex:1; min-width:220px;">
+                        <div style="font-size:13px; color:var(--text-muted); margin-bottom:6px;">בחר חשבונית להצלבה</div>
+                        <select id="select-invoice" style="width:100%; padding:10px; border-radius:8px; background: rgba(0,0,0,0.3); border:1px solid var(--glass-border); color: var(--text-main);"></select>
+                    </div>
+                    <div style="flex:1; min-width:220px;">
+                        <div style="font-size:13px; color:var(--text-muted); margin-bottom:6px;">תעודת משלוח (ריק = איתור אוטומטי)</div>
+                        <select id="select-delivery-note" style="width:100%; padding:10px; border-radius:8px; background: rgba(0,0,0,0.3); border:1px solid var(--glass-border); color: var(--text-main);">
+                            <option value="">-- איתור אוטומטי לפי ספק --</option>
+                        </select>
+                    </div>
+                    <button class="btn btn-primary" onclick="runDocumentMatch()"><i class="fa-solid fa-scale-balanced"></i> בצע הצלבה</button>
+                    <button class="btn btn-secondary" onclick="loadDocumentSelectors()"><i class="fa-solid fa-rotate"></i> רענן רשימות</button>
+                </div>
+            </div>
+
+            <div id="match-summary-container"></div>
+            <div id="match-results-container"></div>
+        </div>
+    </main>
+
+    <div class="drawer-overlay" id="negotiation-overlay" onclick="closeNegotiationDrawer()"></div>
+    <div class="glass-panel drawer" id="negotiation-drawer">
+        <div class="drawer-header">
+            <div class="drawer-title"><i class="fa-solid fa-robot" style="color: var(--accent-primary);"></i> סוכן AI למשא ומתן</div>
+            <button class="close-btn" onclick="closeNegotiationDrawer()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="drawer-content">
+            <div class="glass-panel" style="padding: 16px;">
+                <div class="context-row"><span>ספק יעד:</span> <strong id="neg-supplier"></strong></div>
+                <div class="context-row"><span>המוצר המוצלב:</span> <strong id="neg-product"></strong></div>
+                <div class="context-row"><span>מחיר נוכחי במחירון:</span> <strong class="bad" id="neg-current-price"></strong></div>
+                <div class="context-row" style="border:none;"><span>מחיר מינימום בשוק:</span> <strong class="best" id="neg-target-price"></strong></div>
+            </div>
+
+            <div id="ai-loading" style="display: none; flex-direction: column;">
+                <div class="skeleton-text" style="width: 100%;"></div>
+                <div class="skeleton-text" style="width: 85%;"></div>
+                <div class="skeleton-text" style="width: 95%;"></div>
+                <div style="font-size: 13px; color: var(--accent-primary); text-align: center; margin-top: 10px; font-weight: 500;">מנוע ה-AI מנתח את פערי השוק ומנסח פנייה...</div>
+            </div>
+
+            <div id="ai-result" style="display: none;">
+                <div style="font-size: 14px; margin-bottom: 10px; color: var(--text-muted); font-weight: 500;">טיוטת פנייה רשמית מוכנה לאישור:</div>
+                <textarea id="ai-draft-content" class="glass-textarea" rows="14"></textarea>
+                <div style="display: flex; gap: 10px; margin-top: 15px;">
+                    <button class="btn btn-secondary" style="flex: 1;" onclick="generateNegotiation(true)"><i class="fa-solid fa-bolt" style="color:var(--warning);"></i> ניסוח אגרסיבי</button>
+                    <button class="btn btn-primary" style="flex: 1;" onclick="sendNegotiationEmail()"><i class="fa-solid fa-paper-plane"></i> שלח מייל לספק</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="drawer-overlay" id="pricelist-overlay" onclick="closePricelistModal()"></div>
+    <div class="glass-panel" id="pricelist-modal" style="display:none; position:fixed; top:50%; left:50%; transform:translate(-50%, -50%); width:80%; max-width:800px; max-height:80vh; z-index:101; flex-direction:column; padding:0;">
+        <div style="display:flex; justify-content:space-between; align-items:center; padding:24px; border-bottom:1px solid var(--glass-border); background:rgba(0,0,0,0.2); border-radius:16px 16px 0 0;">
+            <div class="drawer-title"><i class="fa-solid fa-list-check" style="color:var(--accent-primary);"></i> <span id="pricelist-modal-title">מחירון ספק</span></div>
+            <button class="close-btn" onclick="closePricelistModal()"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div id="pricelist-modal-content" style="padding:24px; overflow-y:auto; flex:1;"></div>
+    </div>
+
+    <script>
+        // --- SPA View Navigation ---
+        function switchView(viewId, element) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(el => el.classList.remove('active'));
+            document.getElementById(`view-${viewId}`).classList.add('active');
+            if(element) element.classList.add('active');
+        }
+
+        // --- Upload scanned document -> AI extraction -> DB ---
+        const dropZone = document.getElementById('drop-zone');
+        const fileInput = document.getElementById('file-input');
+
+        if (dropZone) {
+            dropZone.addEventListener('click', () => fileInput.click());
+            dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.style.borderColor = 'var(--accent-primary)'; });
+            dropZone.addEventListener('dragleave', () => { dropZone.style.borderColor = 'var(--glass-border)'; });
+            dropZone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                dropZone.style.borderColor = 'var(--glass-border)';
+                if (e.dataTransfer.files.length) uploadPricelistFile(e.dataTransfer.files[0]);
+            });
+            fileInput.addEventListener('change', (e) => {
+                if (e.target.files.length) uploadPricelistFile(e.target.files[0]);
+            });
+        }
+
+        async function uploadPricelistFile(file) {
+            const statusEl = document.getElementById('upload-status');
+            const supplier = document.getElementById('upload-supplier-name').value.trim();
+
+            statusEl.innerHTML = `<div style="color: var(--text-muted);"><i class="fa-solid fa-spinner fa-spin"></i> מעבד את הקובץ (${file.name}) מול מנוע ה-AI...</div>`;
+
+            const formData = new FormData();
+            formData.append('file', file);
+            if (supplier) formData.append('supplier', supplier);
+
+            try {
+                const res = await fetch('/api/upload-pricelist', { method: 'POST', body: formData });
+                const data = await res.json();
+
+                if (res.ok && data.success) {
+                    statusEl.innerHTML = `<div style="color: var(--success);"><i class="fa-solid fa-circle-check"></i> נטענו ${data.items_count} פריטים עבור הספק "${data.supplier}" בהצלחה.</div>`;
+                    document.getElementById('upload-supplier-name').value = '';
+                    loadSuppliers();
+                    loadDashboardStats();
+                } else {
+                    statusEl.innerHTML = `<div style="color: var(--danger);"><i class="fa-solid fa-circle-exclamation"></i> ${data.error || 'שגיאה לא ידועה בעיבוד הקובץ'}</div>`;
+                }
+            } catch (e) {
+                statusEl.innerHTML = `<div style="color: var(--danger);"><i class="fa-solid fa-circle-exclamation"></i> שגיאת רשת - בדוק את החיבור לשרת.</div>`;
+            }
+            fileInput.value = '';
+        }
+
+        // --- Invoice vs Delivery Note matching ---
+        document.querySelectorAll('.doc-drop-zone').forEach(zone => {
+            const doctype = zone.dataset.doctype;
+            const input = zone.querySelector('.doc-file-input');
+
+            zone.addEventListener('click', () => input.click());
+            zone.addEventListener('dragover', (e) => { e.preventDefault(); zone.style.borderColor = 'var(--accent-primary)'; });
+            zone.addEventListener('dragleave', () => { zone.style.borderColor = 'var(--glass-border)'; });
+            zone.addEventListener('drop', (e) => {
+                e.preventDefault();
+                zone.style.borderColor = 'var(--glass-border)';
+                if (e.dataTransfer.files.length) uploadDocumentFile(e.dataTransfer.files[0], doctype);
+            });
+            input.addEventListener('change', (e) => {
+                if (e.target.files.length) uploadDocumentFile(e.target.files[0], doctype);
+                input.value = '';
+            });
+        });
+
+        async function uploadDocumentFile(file, doctype) {
+            const statusEl = document.getElementById(`status-${doctype}`);
+            statusEl.innerHTML = `<span style="color:var(--text-muted);"><i class="fa-solid fa-spinner fa-spin"></i> מעבד...</span>`;
+
+            const formData = new FormData();
+            formData.append('file', file);
+            formData.append('doc_type', doctype);
+
+            try {
+                const res = await fetch('/api/upload-document', { method: 'POST', body: formData });
+                const data = await res.json();
+
+                if (res.ok && data.success) {
+                    statusEl.innerHTML = `<span style="color:var(--success);"><i class="fa-solid fa-circle-check"></i> נטענו ${data.items_count} שורות (ספק: ${data.supplier})</span>`;
+                    loadDocumentSelectors();
+                } else {
+                    statusEl.innerHTML = `<span style="color:var(--danger);"><i class="fa-solid fa-circle-exclamation"></i> ${data.error || 'שגיאה'}</span>`;
+                }
+            } catch (e) {
+                statusEl.innerHTML = `<span style="color:var(--danger);">שגיאת רשת</span>`;
+            }
+        }
+
+        async function loadDocumentSelectors() {
+            try {
+                const [invRes, dnRes] = await Promise.all([
+                    fetch('/api/list-documents?doc_type=invoice'),
+                    fetch('/api/list-documents?doc_type=delivery_note')
+                ]);
+                const invData = await invRes.json();
+                const dnData = await dnRes.json();
+
+                const invSelect = document.getElementById('select-invoice');
+                invSelect.innerHTML = (invData.documents || []).map(d =>
+                    `<option value="${d.id}">${d.supplier_name} | חשבונית ${d.doc_number || d.id} | ${d.item_count} שורות</option>`
+                ).join('');
+
+                const dnSelect = document.getElementById('select-delivery-note');
+                dnSelect.innerHTML = '<option value="">-- איתור אוטומטי לפי ספק --</option>' +
+                    (dnData.documents || []).map(d =>
+                        `<option value="${d.id}">${d.supplier_name} | תעודה ${d.doc_number || d.id} | ${d.item_count} שורות</option>`
+                    ).join('');
+            } catch (e) { console.error("Error loading document selectors", e); }
+        }
+
+        async function runDocumentMatch() {
+            const invoiceId = document.getElementById('select-invoice').value;
+            const deliveryId = document.getElementById('select-delivery-note').value;
+            const summaryEl = document.getElementById('match-summary-container');
+            const resultsEl = document.getElementById('match-results-container');
+
+            if (!invoiceId) {
+                summaryEl.innerHTML = `<div class="glass-panel" style="padding:16px; color:var(--danger);">יש לבחור חשבונית להצלבה (או להעלות אחת למעלה).</div>`;
+                return;
+            }
+
+            summaryEl.innerHTML = `<div class="glass-panel" style="padding:16px; color:var(--text-muted);"><i class="fa-solid fa-spinner fa-spin"></i> מריץ הצלבה...</div>`;
+            resultsEl.innerHTML = '';
+
+            try {
+                const res = await fetch('/api/match-documents', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        invoice_id: parseInt(invoiceId),
+                        delivery_note_id: deliveryId ? parseInt(deliveryId) : null
+                    })
+                });
+                const data = await res.json();
+
+                if (!res.ok || !data.success) {
+                    summaryEl.innerHTML = `<div class="glass-panel" style="padding:16px; color:var(--danger);">${data.error || 'שגיאה בהרצת ההצלבה'}</div>`;
+                    return;
+                }
+
+                renderMatchSummary(data.summary, data.supplier_name);
+                renderMatchRows(data.rows);
+            } catch (e) {
+                summaryEl.innerHTML = `<div class="glass-panel" style="padding:16px; color:var(--danger);">שגיאת רשת בהרצת ההצלבה</div>`;
+            }
+        }
+
+        function renderMatchSummary(summary, supplierName) {
+            const el = document.getElementById('match-summary-container');
+            const patternBanner = summary.price_pattern_alert
+                ? `<div class="glass-panel" style="padding:16px; margin-top:16px; border: 1px solid var(--warning); background: rgba(245,158,11,0.08);">
+                       <i class="fa-solid fa-triangle-exclamation" style="color:var(--warning);"></i>
+                       <strong>נמצא דפוס של עליית מחירים:</strong>
+                       ${summary.price_pattern_item_count} פריטים שונים בחשבונית הזו עלו במחיר בצורה מורגשת
+                       (${'>'}${'='}15%) לעומת המחיר הידוע הקודם - שווה לבדוק מול הספק.
+                   </div>`
+                : '';
+            el.innerHTML = `
+                <div class="kpi-grid">
+                    <div class="glass-panel kpi-card">
+                        <div class="kpi-header"><span>ספק</span></div>
+                        <div class="kpi-value" style="font-size:20px;">${supplierName}</div>
+                    </div>
+                    <div class="glass-panel kpi-card">
+                        <div class="kpi-header"><span>שורות תקינות</span></div>
+                        <div class="kpi-value best">${summary.ok_count}</div>
+                    </div>
+                    <div class="glass-panel kpi-card">
+                        <div class="kpi-header"><span>שורות עם אזהרה</span></div>
+                        <div class="kpi-value" style="color:var(--warning);">${summary.warning_count}</div>
+                    </div>
+                    <div class="glass-panel kpi-card">
+                        <div class="kpi-header"><span>שורות עם פער חמור</span></div>
+                        <div class="kpi-value bad">${summary.danger_count}</div>
+                    </div>
+                    <div class="glass-panel kpi-card">
+                        <div class="kpi-header"><span>חריגת תשלום משוערת</span></div>
+                        <div class="kpi-value bad">${summary.estimated_overcharge.toFixed(2)} ₪</div>
+                    </div>
+                </div>
+                ${patternBanner}`;
+        }
+
+        function renderMatchRows(rows) {
+            const el = document.getElementById('match-results-container');
+
+            const severityBadge = (sev) => {
+                if (sev === 'danger') return `<span class="status-badge" style="background:rgba(239,68,68,0.15); color:var(--danger);">פער חמור</span>`;
+                if (sev === 'warning') return `<span class="status-badge" style="background:rgba(245,158,11,0.15); color:var(--warning);">אזהרה</span>`;
+                return `<span class="status-badge status-active">תקין</span>`;
+            };
+
+            const fmt = (v) => (v === null || v === undefined) ? '-' : (typeof v === 'number' ? v.toFixed(2) : v);
+
+            const priceChangeCell = (r) => {
+                if (r.price_change_pct === null || r.price_change_pct === undefined) return '-';
+                const pct = r.price_change_pct;
+                const color = Math.abs(pct) >= 30 ? 'var(--danger)' : (Math.abs(pct) >= 15 ? 'var(--warning)' : 'var(--text-muted)');
+                const arrow = pct > 0 ? '▲' : (pct < 0 ? '▼' : '');
+                const refPrice = r.previous_known_price !== null && r.previous_known_price !== undefined ? r.previous_known_price : r.pricelist_price;
+                return `<span style="color:${color}; font-weight:600;">${arrow} ${Math.abs(pct).toFixed(1)}%</span>
+                        <div style="font-size:11px; color:var(--text-muted);">לעומת ${fmt(refPrice)} ₪</div>`;
+            };
+
+            const bodyHtml = rows.map(r => `
+                <tr>
+                    <td>${r.description || '-'}${r.sku ? `<div style="font-size:11px; color:var(--text-muted);">מק"ט: ${r.sku}</div>` : ''}</td>
+                    <td>${fmt(r.invoice_quantity)}</td>
+                    <td>${fmt(r.delivery_quantity)}</td>
+                    <td>${fmt(r.invoice_unit_price)}</td>
+                    <td>${priceChangeCell(r)}</td>
+                    <td>${severityBadge(r.severity)}</td>
+                    <td style="font-size:12px; color:var(--text-muted); max-width:260px;">${(r.flags || []).join('<br>') || '-'}</td>
+                </tr>
+            `).join('');
+
+            el.innerHTML = `
+                <div class="glass-panel" style="padding:24px;">
+                    <div class="section-title"><i class="fa-solid fa-table-list" style="color:var(--accent-primary);"></i> תוצאות ההצלבה</div>
+                    <div class="table-container">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>פריט</th>
+                                    <th>כמות בחשבונית</th>
+                                    <th>כמות בתעודת משלוח</th>
+                                    <th>מחיר בחשבונית</th>
+                                    <th>שינוי מחיר לעומת היסטוריה</th>
+                                    <th>סטטוס</th>
+                                    <th>הערות</th>
+                                </tr>
+                            </thead>
+                            <tbody>${bodyHtml}</tbody>
+                        </table>
+                    </div>
+                </div>`;
+        }
+
+        // --- Load Suppliers from DB (for the "compare suppliers" dropdown only) ---
+        async function loadSuppliers() {
+            try {
+                let res = await fetch('/api/get-suppliers');
+                let data = await res.json();
+
+                let selectHtml = '';
+                data.suppliers.forEach(s => {
+                    selectHtml += `<option value="${s}">${s}</option>`;
+                });
+
+                document.getElementById('suppliers-select').innerHTML = selectHtml;
+                document.getElementById('kpi-suppliers-count').innerText = data.suppliers.length;
+            } catch (e) { console.error("Error loading suppliers from database API"); }
+        }
+
+        // --- Load organized supplier directory: catalog + contacts, from the new endpoints ---
+        async function loadSupplierDirectory() {
+            const tbody = document.getElementById('supplier-directory-body');
+            try {
+                const [suppliersRes, contactsRes] = await Promise.all([
+                    fetch('/api/suppliers'),
+                    fetch('/api/supplier-contacts'),
+                ]);
+                const suppliersData = await suppliersRes.json();
+                const contactsData = await contactsRes.json();
+
+                if (suppliersData.error) throw new Error(suppliersData.error);
+
+                const contactsMap = {};
+                (contactsData.contacts || []).forEach(c => { contactsMap[c.supplier] = c; });
+
+                let tableHtml = '';
+                (suppliersData.suppliers || []).forEach(s => {
+                    const contact = contactsMap[s.name];
+                    const phone = contact ? (contact.phone || contact.mobile || '-') : '-';
+                    const person = contact ? (contact.contact_person || '-') : '-';
+                    const categoryBadge = s.category
+                        ? `<span class="status-badge status-active">${s.category}</span>`
+                        : `<span style="color:var(--text-muted);">-</span>`;
+                    const hasCatalog = s.catalog_items_count > 0;
+                    tableHtml += `<tr>
+                        <td style="font-weight:500;">${s.name}</td>
+                        <td>${categoryBadge}</td>
+                        <td>${phone}</td>
+                        <td>${person}</td>
+                        <td>${s.catalog_items_count}</td>
+                        <td>
+                            <button class="btn btn-secondary" style="padding: 6px 12px; font-size:12px;"
+                                onclick="viewSupplierCatalog('${s.name.replace(/'/g, "\\'")}')"
+                                ${hasCatalog ? '' : 'disabled title="אין פריטי קטלוג לספק זה"'}>
+                                <i class="fa-solid fa-folder-open"></i> צפה בקטלוג
+                            </button>
+                        </td>
+                    </tr>`;
+                });
+
+                tbody.innerHTML = tableHtml || `<tr><td colspan="6" style="text-align:center; padding:24px; color:var(--text-muted);">אין עדיין ספקים במערכת</td></tr>`;
+            } catch (e) {
+                console.error("Error loading supplier directory", e);
+                tbody.innerHTML = `<tr><td colspan="6" style="text-align:center; padding:24px;" class="bad">שגיאה בטעינת רשימת הספקים: ${e.message}</td></tr>`;
+            }
+        }
+
+        // --- Load Real Dashboard Stats ---
+        async function loadDashboardStats() {
+            try {
+                let res = await fetch('/api/get-dashboard-stats');
+                let data = await res.json();
+                
+                document.getElementById('kpi-items-count').innerText = data.total_items.toLocaleString();
+                
+                const labels = data.distribution.map(d => d.supplier);
+                const counts = data.distribution.map(d => d.count);
+                
+                Chart.defaults.color = '#94a3b8';
+                Chart.defaults.font.family = "'Rubik', sans-serif";
+                
+                new Chart(document.getElementById('supplierChart').getContext('2d'), {
+                    type: 'doughnut', 
+                    data: { 
+                        labels: labels, 
+                        datasets: [{ 
+                            data: counts, 
+                            backgroundColor: ['#3b82f6', '#8b5cf6', '#10b981', '#f59e0b', '#ef4444'], 
+                            borderWidth: 0 
+                        }] 
+                    }, 
+                    options: { responsive: true, maintainAspectRatio: false, cutout: '70%' }
+                });
+
+                new Chart(document.getElementById('trendChart').getContext('2d'), {
+                    type: 'line', 
+                    data: { 
+                        labels: ['ינואר', 'פברואר', 'מרץ', 'אפריל', 'מאי', 'יוני'], 
+                        datasets: [
+                            { label: 'הוצאה בפועל (דמו)', data: [120000, 115000, 118000, 105000, 102000, 98000], borderColor: '#3b82f6', backgroundColor: 'rgba(59, 130, 246, 0.1)', borderWidth: 2, tension: 0.4, fill: true }
+                        ] 
+                    }, 
+                    options: { responsive: true, maintainAspectRatio: false, scales: { y: { grid: { color: 'rgba(255,255,255,0.05)' } }, x: { grid: { display: false } } } }
+                });
+
+            } catch (e) { console.error("Error loading dashboard stats", e); }
+        }
+
+        window.onload = () => { 
+            loadSuppliers(); 
+            loadDashboardStats(); 
+            loadDocumentSelectors();
+            loadSupplierDirectory();
+        };
+
+        // --- Compare Suppliers ---
+        async function runComparison() {
+            let sel = document.getElementById("suppliers-select");
+            let selected = Array.from(sel.selectedOptions).map(o => o.value);
+            if(selected.length < 2) return alert("על מנת לבצע הצלבה, יש לבחור לפחות 2 ספקים מהרשימה.");
+
+            document.getElementById("results-container").innerHTML = '<div style="text-align:center; padding: 50px;"><i class="fa-solid fa-spinner fa-spin fa-2x" style="color:var(--accent-primary);"></i></div>';
+
+            try {
+                let res = await fetch('/api/compare-suppliers', {
+                    method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ suppliers: selected })
+                });
+                let data = await res.json();
+                
+                let html = '';
+                
+                if (data.insights && data.insights.length > 0) {
+                    html += `<div class="glass-panel" style="padding:20px; margin-bottom:20px; background:rgba(59,130,246,0.04);"><div class="section-title" style="color:var(--accent-primary); margin-bottom:10px;"><i class="fa-solid fa-brain"></i> תובנות AI מנתוני האמת</div>`;
+                    data.insights.forEach(ins => html += `<div style="font-size:14px; margin-bottom:6px;">💡 ${ins}</div>`);
+                    html += `</div>`;
+                }
+
+                data.results.forEach(r => {
+                    html += `<div class="result-card"><div class="section-title">📦 ${r.product}</div><div style="margin-bottom: 15px; font-size:14px;">⭐ מחיר שוק מומלץ (יעד): <span class="best">₪${r.best_price} (${r.best_supplier})</span></div>`;
+                    
+                    r.offers.forEach(o => {
+                        let isGap = o.difference > 0;
+                        html += `<div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 8px; padding: 12px; background: rgba(0,0,0,0.15); border-radius: 8px; border:1px solid rgba(255,255,255,0.03);">
+                            <span style="font-size:14px;" class="${isGap ? 'bad' : 'best'}">🛒 ${o.supplier} ➜ ₪${o.price} ${isGap ? `(+₪${o.difference})` : ' (המחיר הזול ביותר)'}</span>`;
+                        
+                        if (isGap) {
+                            html += `<button class="btn btn-secondary" style="padding: 6px 14px; font-size: 12px;" onclick="openNegotiationDrawer('${o.supplier}', '${r.product}', ${o.price}, ${r.best_price})"><i class="fa-solid fa-robot" style="color:var(--accent-primary);"></i> הפעל סוכן מו"מ</button>`;
+                        }
+                        html += `</div>`;
+                    });
+                    html += `</div>`;
+                });
+                
+                if(data.results.length === 0) {
+                    html = '<div class="glass-panel" style="padding:40px; text-align:center; color:var(--text-muted);"><i class="fa-solid fa-folder-open" style="margin-bottom:10px; font-size:24px;"></i><br>לא נמצאו מוצרים חופפים ישירים להצלבה בין הספקים שנבחרו.</div>';
+                }
+                document.getElementById("results-container").innerHTML = html;
+            } catch(e) { document.getElementById("results-container").innerHTML = '<div class="bad" style="padding:20px;">שגיאה בעיבוד נתוני ההשוואה.</div>'; }
+        }
+
+        // --- AI Negotiation Logic ---
+        let currentNegotiationData = {};
+        
+        function openNegotiationDrawer(supplier, product, currentPrice, targetPrice) {
+            currentNegotiationData = { supplier, product, currentPrice, targetPrice };
+            document.getElementById("neg-supplier").innerText = supplier;
+            document.getElementById("neg-product").innerText = product;
+            document.getElementById("neg-current-price").innerText = `₪${currentPrice}`;
+            document.getElementById("neg-target-price").innerText = `₪${targetPrice}`;
+            
+            document.getElementById("negotiation-overlay").classList.add("open");
+            document.getElementById("negotiation-drawer").classList.add("open");
+            generateNegotiation(false);
+        }
+        
+        function closeNegotiationDrawer() {
+            document.getElementById("negotiation-overlay").classList.remove("open");
+            document.getElementById("negotiation-drawer").classList.remove("open");
+        }
+        
+        async function generateNegotiation(isAggressive) {
+            document.getElementById("ai-loading").style.display = "flex";
+            document.getElementById("ai-result").style.display = "none";
+            
+            try {
+                let res = await fetch('/api/generate-negotiation', { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ ...currentNegotiationData, aggressive: isAggressive }) 
+                });
+                let data = await res.json();
+                document.getElementById("ai-loading").style.display = "none";
+                document.getElementById("ai-draft-content").value = data.draft;
+                document.getElementById("ai-result").style.display = "block";
+            } catch (e) { 
+                alert("שגיאה בפנייה למנוע ה-AI"); 
+                document.getElementById("ai-loading").style.display = "none"; 
+            }
+        }
+        
+        function sendNegotiationEmail() {
+            const text = document.getElementById("ai-draft-content").value;
+            window.location.href = `mailto:?subject=עדכון תנאים מסחריים והתאמת מחיר - ${currentNegotiationData.supplier}&body=${encodeURIComponent(text)}`;
+            closeNegotiationDrawer();
+        }
+
+        // --- New Supplier Catalog Modal (uses the organized supplier_catalog_items data) ---
+        async function viewSupplierCatalog(supplierName) {
+            document.getElementById("pricelist-overlay").classList.add("open");
+            let modal = document.getElementById("pricelist-modal");
+            modal.style.display = "flex";
+            document.getElementById("pricelist-modal-title").innerText = `קטלוג: ${supplierName}`;
+            document.getElementById("pricelist-modal-content").innerHTML = '<div style="text-align:center; padding: 40px;"><i class="fa-solid fa-spinner fa-spin fa-2x" style="color:var(--accent-primary);"></i><div style="margin-top:10px;">שולף נתונים מה-DB...</div></div>';
+
+            try {
+                let res = await fetch(`/api/supplier-catalog?supplier=${encodeURIComponent(supplierName)}`);
+                let data = await res.json();
+                if (data.error) throw new Error(data.error);
+
+                let html = `<div style="margin-bottom:15px; font-size:14px; color:var(--text-muted);">נמצאו ${data.items.length} פריטים בקטלוג הספק.</div>`;
+                html += `<table style="width:100%; border-collapse:collapse; text-align:right;">
+                            <thead>
+                                <tr>
+                                    <th style="padding:12px; border-bottom:2px solid var(--glass-border);">תיאור הפריט</th>
+                                    <th style="padding:12px; border-bottom:2px solid var(--glass-border);">יחידה</th>
+                                    <th style="padding:12px; border-bottom:2px solid var(--glass-border);">מחיר</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+
+                data.items.forEach(item => {
+                    html += `<tr style="background:rgba(0,0,0,0.1);">
+                                <td style="padding:12px; border-bottom:1px solid rgba(255,255,255,0.05);">${item.description || '-'}</td>
+                                <td style="padding:12px; border-bottom:1px solid rgba(255,255,255,0.05); color:var(--text-muted);">${item.unit || '-'}</td>
+                                <td style="padding:12px; border-bottom:1px solid rgba(255,255,255,0.05); font-weight:bold; color:var(--success);">₪${Number(item.price).toFixed(2)}</td>
+                             </tr>`;
+                });
+
+                html += `</tbody></table>`;
+                document.getElementById("pricelist-modal-content").innerHTML = html;
+
+            } catch(e) {
+                document.getElementById("pricelist-modal-content").innerHTML = `<div class="bad" style="padding:20px; text-align:center;">שגיאה בטעינת הקטלוג: ${e.message}</div>`;
+            }
+        }
+
+        // --- Supplier Pricelist Modal (legacy - scanned pricelists via NAPS2/upload) ---
+        async function viewPricelist(supplierName) {
+            document.getElementById("pricelist-overlay").classList.add("open");
+            let modal = document.getElementById("pricelist-modal");
+            modal.style.display = "flex";
+            document.getElementById("pricelist-modal-title").innerText = `מחירון: ${supplierName}`;
+            document.getElementById("pricelist-modal-content").innerHTML = '<div style="text-align:center; padding: 40px;"><i class="fa-solid fa-spinner fa-spin fa-2x" style="color:var(--accent-primary);"></i><div style="margin-top:10px;">שולף נתונים מה-DB...</div></div>';
+
+            try {
+                let res = await fetch('/api/get-supplier-pricelist', {
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ supplier: supplierName })
+                });
+                let data = await res.json();
+                if (data.error) throw new Error(data.error);
+
+                let html = `<div style="margin-bottom:15px; font-size:14px; color:var(--text-muted);">נמצאו ${data.items.length} פריטים פעילים במחירון זה.</div>`;
+                html += `<table style="width:100%; border-collapse:collapse; text-align:right;">
+                            <thead>
+                                <tr>
+                                    <th style="padding:12px; border-bottom:2px solid var(--glass-border);">מק"ט</th>
+                                    <th style="padding:12px; border-bottom:2px solid var(--glass-border);">תיאור הפריט</th>
+                                    <th style="padding:12px; border-bottom:2px solid var(--glass-border);">מחיר</th>
+                                </tr>
+                            </thead>
+                            <tbody>`;
+                
+                data.items.forEach(item => {
+                    html += `<tr style="background:rgba(0,0,0,0.1);">
+                                <td style="padding:12px; border-bottom:1px solid rgba(255,255,255,0.05); color:var(--text-muted);">${item.sku}</td>
+                                <td style="padding:12px; border-bottom:1px solid rgba(255,255,255,0.05);">${item.description}</td>
+                                <td style="padding:12px; border-bottom:1px solid rgba(255,255,255,0.05); font-weight:bold; color:var(--success);">₪${item.price.toFixed(2)}</td>
+                             </tr>`;
+                });
+                
+                html += `</tbody></table>`;
+                document.getElementById("pricelist-modal-content").innerHTML = html;
+
+            } catch(e) { 
+                document.getElementById("pricelist-modal-content").innerHTML = `<div class="bad" style="padding:20px; text-align:center;">שגיאה בטעינת המחירון: ${e.message}</div>`; 
+            }
+        }
+        
+        function closePricelistModal() {
+            document.getElementById("pricelist-overlay").classList.remove("open");
+            document.getElementById("pricelist-modal").style.display = "none";
+        }
+    </script>
+</body>
+</html>

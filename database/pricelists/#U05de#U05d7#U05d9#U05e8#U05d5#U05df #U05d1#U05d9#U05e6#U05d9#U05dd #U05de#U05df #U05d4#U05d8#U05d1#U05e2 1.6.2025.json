@@ -1,0 +1,30 @@
+{
+    "EGGS-TRAY-30-L": {
+        "description": "תבנית ביצים 30 יח' גודל L",
+        "price": 25.72
+    },
+    "EGGS-TRAY-30-M": {
+        "description": "תבנית ביצים 30 יח' גודל M",
+        "price": 24.04
+    },
+    "EGGS-TRAY-30-S": {
+        "description": "תבנית ביצים 30 יח' גודל S",
+        "price": 16.15
+    },
+    "LIQUID-EGGS-MIX-1KG": {
+        "description": "נוזל ביצים מעורב 1 ק\"ג",
+        "price": 18.3
+    },
+    "LIQUID-EGGS-WHITE-1KG": {
+        "description": "נוזל ביצים חלבון 1 ק\"ג",
+        "price": 17.5
+    },
+    "LIQUID-EGGS-YOLK-1KG": {
+        "description": "נוזל ביצים חלמון 1 ק\"ג",
+        "price": 20.0
+    },
+    "HARD-BOILED-EGGS-BUCKET-10KG": {
+        "description": "דלי ביצים קשות גדול 10 ק\"ג 170-180",
+        "price": 235.0
+    }
+}
